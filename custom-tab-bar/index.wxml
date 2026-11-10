@@ -1,0 +1,15 @@
+<view class="nav">
+  <view
+    wx:for="{{items}}"
+    wx:key="key"
+    class="nav-item {{index === selected ? 'nav-active' : ''}}"
+    data-url="{{item.url}}"
+    data-index="{{index}}"
+    bindtap="onTapTab"
+  >
+    <view class="nav-label">{{item.label}}</view>
+    <!-- 消息格：未读消息条数；工作台格（中介端）：还有几条单子挂着没处理的投递 -->
+    <view wx:if="{{item.key === 'message' && unread > 0}}" class="badge nav-badge">{{unreadText}}</view>
+    <view wx:elif="{{item.key === 'workbench' && todo > 0}}" class="badge nav-badge">{{todoText}}</view>
+  </view>
+</view>

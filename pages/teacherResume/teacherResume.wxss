@@ -1,0 +1,15 @@
+.top { margin-bottom: 4px; }
+.field-top { align-items: flex-start; }
+.field-top .field-label { line-height: 42px; }
+
+/* 科目下拉的「选择」按钮（页面样式隔离，这里再定义一份） */
+.pick-btn {
+  margin-left: 6px;
+  padding: 8px 10px;
+  border: 1px solid #CFF0EA;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #0A9C90;
+  font-size: 13px;
+  white-space: nowrap;
+}

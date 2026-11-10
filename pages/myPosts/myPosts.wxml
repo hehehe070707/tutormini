@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="page-title">我的单子</view>
+  <view class="gap"></view>
+
+  <view class="card guest-tip" wx:if="{{guest}}">
+    <view class="muted">{{tip}}</view>
+    <view class="gap"></view>
+    <button class="btn" bindtap="onLogin">登录 / 注册</button>
+  </view>
+
+  <view class="card guest-tip" wx:elif="{{teacher}}">
+    <view class="muted">{{tip}}</view>
+  </view>
+
+  <block wx:else>
+    <block wx:for="{{sections}}" wx:key="status">
+      <view class="page-title section">{{item.title}}（{{item.items.length}} 条）</view>
+      <view class="list">
+        <view class="list-row" wx:for="{{item.items}}" wx:for-item="post" wx:key="id"
+              data-post-id="{{post.id}}" bindtap="onOpenManage">
+          <view class="grow">
+            <view class="mp-line">
+              <text class="mp-subject">{{post.subjectText}}</text>
+              <text class="mp-code">{{post.code}}</text>
+              <text class="red-dot" wx:if="{{post.dot}}"></text>
+            </view>
+            <view class="muted mp-line2">{{post.timeText}} · {{post.price}}</view>
+            <view class="muted mp-line2">{{post.inviteText}}</view>
+          </view>
+          <view class="mp-go">管理 ›</view>
+        </view>
+      </view>
+    </block>
+    <view class="empty" wx:if="{{total === 0}}">还没有发过单，去【工作台】点【＋ 批量发单】发一条试试～</view>
+  </block>
+</view>

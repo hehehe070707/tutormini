@@ -1,0 +1,44 @@
+{
+  "pages": [
+    "pages/post/post",
+    "pages/login/login",
+    "pages/workbench/workbench",
+    "pages/myPosts/myPosts",
+    "pages/postManage/postManage",
+    "pages/message/message",
+    "pages/profile/profile",
+    "pages/postBatch/postBatch",
+    "pages/postThread/postThread",
+    "pages/teacherDetail/teacherDetail",
+    "pages/teacherResume/teacherResume",
+    "pages/chat/chat"
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#9CA3AF",
+    "selectedColor": "#0FB5A6",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/workbench/workbench", "text": "工作台" },
+      { "pagePath": "pages/myPosts/myPosts", "text": "单子" },
+      { "pagePath": "pages/post/post", "text": "发单/接单" },
+      { "pagePath": "pages/message/message", "text": "消息" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "🎓 家教平台",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFFFFF"
+  },
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "登录后定位，只展示附近45公里内的单子"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "style": "v2"
+}

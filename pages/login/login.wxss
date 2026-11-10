@@ -1,0 +1,16 @@
+.login { padding: 20px; }
+
+.login-top { margin-bottom: 4px; }
+.login-title { margin-top: 8px; }
+.login-sub { margin: 10px 0 20px; }
+
+.intent-tip {
+  background: #E7F8F5;
+  border-color: #CFF0EA;
+  color: #0A9C90;
+  font-weight: bold;
+}
+
+.card-title { font-size: 15px; }
+
+.btn-gap { width: 8px; }

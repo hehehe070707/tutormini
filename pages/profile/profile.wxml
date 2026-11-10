@@ -1,0 +1,95 @@
+<view class="page">
+  <view class="avatar profile-avatar">{{avatar}}</view>
+  <view class="page-title center">{{nameText}}</view>
+  <view class="muted center">{{roleName}}</view>
+
+  <!-- 访客：说明为什么需要身份，并给登录入口 -->
+  <view class="card guest-tip" wx:if="{{role === 'guest'}}">
+    <view class="muted">微信里打开就能直接看大家发的单。只有下面这些动作才需要先选一个账号：发布需求、投递简历、确认接单。</view>
+    <view class="gap"></view>
+    <view class="row">
+      <button class="btn grow" data-intent="student" bindtap="onLogin">我是学生</button>
+      <view class="btn-gap"></view>
+      <button class="btn-ghost grow" data-intent="teacher" bindtap="onLogin">我是老师</button>
+    </view>
+  </view>
+
+  <!-- 学生资料 -->
+  <view class="card" wx:if="{{role === 'student'}}">
+    <view class="field">
+      <view class="field-label">称呼</view>
+      <input class="input" placeholder="这个账号的称呼（老师端只显示「平台」）" value="{{studentName}}"
+             data-field="studentName" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">备注</view>
+      <input class="input" placeholder="自己看的备注，可以留空" value="{{school}}"
+             data-field="school" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">备注 2</view>
+      <input class="input" placeholder="自己看的备注，可以留空" value="{{grade}}"
+             data-field="grade" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">手机号</view>
+      <input class="input" placeholder="只你自己可见，老师端看不到" value="{{phone}}"
+             data-field="phone" bindinput="onInput" />
+    </view>
+    <button class="btn" bindtap="onSaveProfile">保存资料</button>
+  </view>
+
+  <!-- 老师资料 -->
+  <view class="card" wx:if="{{role === 'teacher'}}">
+    <view class="field">
+      <view class="field-label">姓名</view>
+      <input class="input" placeholder="你在登录页用的姓名" value="{{teacherName}}"
+             data-field="teacherName" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">科目</view>
+      <input class="input" placeholder="例如：数学" value="{{subject}}"
+             data-field="subject" bindinput="onInput" />
+      <picker range="{{subjectOptions}}" value="{{subjectIndex}}" bindchange="onSubjectPick">
+        <view class="pick-btn">选择</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">性别</view>
+      <picker range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderPick">
+        <view class="picker-value">{{genderOptions[genderIndex]}}</view>
+      </picker>
+      <view class="muted">平台发的单如果指定了要男老师 / 女老师，用这个来判断你符不符合。</view>
+    </view>
+    <view class="field">
+      <view class="field-label">价格</view>
+      <input class="input" placeholder="例如：150 元/小时、200 元/次、面议" value="{{price}}"
+             data-field="price" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">位置</view>
+      <input class="input" placeholder="例如：海淀区 · 中关村（学生可按位置搜到你）" value="{{area}}"
+             data-field="area" bindinput="onInput" />
+      <!-- 小程序特有的定位入口：不想手打就弹微信选点地图，用当前位置或改成别的地点 -->
+      <button class="loc-btn" bindtap="onChooseArea">📍定位</button>
+    </view>
+    <view class="field">
+      <view class="field-label">简介</view>
+      <input class="input" placeholder="一句话介绍自己（可留空，自动生成）" value="{{intro}}"
+             data-field="intro" bindinput="onInput" />
+    </view>
+    <button class="btn" bindtap="onSaveProfile">保存资料</button>
+    <view class="gap"></view>
+    <button class="btn-ghost" bindtap="onOpenResume">📄 我的简历（学历 / 教龄 / 证书 / 时段）</button>
+    <view class="gap"></view>
+    <view class="muted">上面是基本资料（位置和坐标在这里改）；更详细的简历在「我的简历」里填，投递简历时会直接带过去。</view>
+  </view>
+
+  <view class="gap"></view>
+  <view class="center stat">{{stat1}}</view>
+  <view class="center stat">{{stat2}}</view>
+
+  <view class="gap"></view>
+  <button wx:if="{{role !== 'guest'}}" class="btn-ghost logout" bindtap="onLogout">退出登录</button>
+
+</view>

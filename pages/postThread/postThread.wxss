@@ -1,0 +1,11 @@
+.box-head { background: #F3FBFA; border: 1px solid #CFF0EA; }
+.box-head .m-name { font-size: 16px; }
+.tip-card { background: #F3FBFA; border-color: #CFF0EA; }
+
+.m-name { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+.m-right { display: flex; flex-direction: column; align-items: flex-end; }
+
+.notice-tag {
+  font-size: 11px; font-weight: normal; color: #0A9C90;
+  background: #E7F8F5; border-radius: 8rpx; padding: 1px 8rpx; margin-left: 6px;
+}

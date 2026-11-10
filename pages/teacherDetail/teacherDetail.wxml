@@ -1,0 +1,41 @@
+<view class="page-plain detail">
+  <view class="row top">
+    <button class="btn-ghost" bindtap="onBack">← 返回</button>
+    <view class="grow"></view>
+    <view class="page-title">老师简历</view>
+  </view>
+
+  <view class="empty" wx:if="{{notFound}}">找不到这位老师，可能资料已经删掉了。</view>
+
+  <block wx:else>
+  <!-- 资料 -->
+  <view class="card row">
+    <view class="avatar">👤</view>
+    <view class="grow info">
+      <view class="page-title">{{name}}</view>
+      <view class="muted">{{subjectText}}</view>
+      <view class="muted">{{priceText}}</view>
+      <view class="muted">{{areaText}}</view>
+    </view>
+  </view>
+
+  <!-- 完整简历（不设查看限制） -->
+  <view class="page-title section">简历</view>
+  <view class="card">
+    <view class="r-row" wx:for="{{resumeRows}}" wx:key="label">
+      <view class="r-label">{{item.label}}</view>
+      <view class="r-value">{{item.value === '' ? '未填写' : item.value}}</view>
+    </view>
+    <view class="r-row r-intro-row">
+      <view class="r-label">自我介绍</view>
+      <view class="r-value">{{resumeIntro === '' ? '这位老师还没有填写自我介绍。' : resumeIntro}}</view>
+    </view>
+  </view>
+
+  </block>
+</view>
+
+<!-- 底部一个主动作：复制整段简历，平台直接转给客户 -->
+<view class="bottom-bar" wx:if="{{!notFound}}">
+  <button class="btn" bindtap="onCopyResume">📋 复制简历</button>
+</view>

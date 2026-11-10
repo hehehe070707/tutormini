@@ -1,0 +1,30 @@
+<view class="page">
+  <!-- 这张卡片是哪条单子 + 走到哪一步了 -->
+  <view class="card box-head" wx:if="{{post}}">
+    <view class="m-name">{{post.code}} <text class="{{post.statusClass}}">{{post.statusText}}</text></view>
+    <view class="muted">{{post.subject}} · {{post.timeText}}</view>
+    <view class="muted" wx:if="{{post.price}}">价格：{{post.price}}</view>
+  </view>
+
+  <view class="page-title section">这条单子的消息</view>
+  <view class="list" wx:if="{{list.length > 0}}">
+    <view class="list-row" wx:for="{{list}}" wx:key="id"
+          data-url="{{item.contractUrl}}" bindtap="onTapMessage">
+      <view class="grow">
+        <view class="m-name">{{item.title}} <text class="notice-tag">{{item.tagText}}</text></view>
+        <view class="muted">{{item.body}}</view>
+        <view class="muted" wx:if="{{item.contractUrl}}">有合同链接，点一下复制</view>
+      </view>
+      <view class="m-right"><view class="muted">{{item.createdAt}}</view></view>
+    </view>
+  </view>
+  <view class="empty" wx:else>{{empty}}</view>
+
+  <view class="gap"></view>
+  <view class="card tip-card">
+    <view class="muted">
+      这条单子的走法：等平台确认 → 试课 → 主订单进行中 → 结束。
+      平台确认接单后，合同和收款码由「官方助手」发给你；试课没上成要退款也走那条通道。
+    </view>
+  </view>
+</view>

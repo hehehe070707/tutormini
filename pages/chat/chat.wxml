@@ -1,0 +1,29 @@
+<view class="chat-page">
+  <!-- 顶部一句话说明：这是官方助手 -->
+  <view class="chat-card" wx:if="{{navTitle}}">
+    <view class="grow">
+      <view class="cc-role">官方助手</view>
+      <view class="muted">报名、合同、试课的事都可以直接问，消息会同步到消息中心。</view>
+    </view>
+  </view>
+
+  <scroll-view class="chat-list" scroll-y scroll-into-view="{{scrollInto}}" scroll-with-animation>
+    <view class="muted chat-tip">{{tip}}</view>
+
+    <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}"
+          class="bubble-wrap {{item.mine ? 'mine' : 'peer'}}">
+      <view class="bubble">
+        <view>{{item.body}}</view>
+        <view class="bubble-time">{{item.createdAt}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{messages.length === 0}}" class="empty">还没有聊过，打个招呼吧～</view>
+  </scroll-view>
+
+  <view class="chat-input-bar">
+    <input class="input" placeholder="说点什么…（例如：老师这周还有空吗？）"
+           value="{{input}}" bindinput="onInput" confirm-type="send" bindconfirm="onSend" />
+    <button class="btn send-btn" disabled="{{!canSend}}" bindtap="onSend">发送</button>
+  </view>
+</view>

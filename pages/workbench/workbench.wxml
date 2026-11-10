@@ -1,0 +1,55 @@
+<view class="page">
+  <view class="page-title">工作台</view>
+  <view class="gap"></view>
+
+  <view class="card guest-tip" wx:if="{{guest}}">
+    <view class="muted">{{tip}}</view>
+    <view class="gap"></view>
+    <button class="btn" bindtap="onLogin">登录 / 注册</button>
+  </view>
+
+  <view class="card guest-tip" wx:elif="{{teacher}}">
+    <view class="muted">{{tip}}</view>
+  </view>
+
+  <block wx:else>
+    <!-- ① 发单入口：只留批量发单（单条发布已经被它覆盖） -->
+    <view class="row wb-publish">
+      <button class="btn grow" bindtap="onBatch">＋ 批量发单</button>
+    </view>
+
+    <!-- ② 待办：中介真正要动手的四件事；数字＝还有几条单子挂着没处理的投递 -->
+    <view class="page-title section">待办<text class="badge" wx:if="{{todoPosts > 0}}">{{todoPosts}}</text></view>
+    <view wx:if="{{todo.length > 0}}">
+      <view class="card todo-card todo-{{item.kind}}" wx:for="{{todo}}" wx:key="title">
+        <view class="wb-title"><text class="red-dot" wx:if="{{item.dot}}"></text>{{item.title}}</view>
+        <view class="muted">{{item.sub}}</view>
+        <view class="todo-ops">
+          <!-- ① 待交付：把简历合集复制走，发完点【已发家长】 -->
+          <block wx:if="{{item.kind === 'deliver'}}">
+            <button class="btn btn-sm" data-index="{{index}}" bindtap="onCopyDeliver">复制简历合集</button>
+            <button class="btn-ghost btn-sm" data-post-id="{{item.postId}}"
+                    data-count="{{item.count}}" bindtap="onMarkDelivered">已发家长</button>
+          </block>
+          <!-- ② 待定老师：家长点头 → 确认接单 -->
+          <block wx:if="{{item.kind === 'pick'}}">
+            <button class="btn-ghost btn-sm" data-name="{{item.teacherName}}"
+                    data-resume="{{item.resume}}" bindtap="onShowResume">看简历</button>
+            <button class="btn btn-sm" data-booking-id="{{item.bookingId}}" data-name="{{item.teacherName}}"
+                    data-time-text="{{item.timeText}}" bindtap="onConfirmTake">确认接单</button>
+            <button class="btn-ghost btn-sm" data-booking-id="{{item.bookingId}}"
+                    data-name="{{item.teacherName}}" bindtap="onRefuseTake">换一位老师</button>
+          </block>
+          <!-- ③ 待发合同：给老师发合同 / 收款码 -->
+          <button wx:if="{{item.kind === 'contract'}}" class="btn btn-sm"
+                  data-booking-id="{{item.bookingId}}" bindtap="onSendContract">发合同 / 收款码</button>
+          <!-- ④ 待收款：老师已付款 → 确认到账 -->
+          <button wx:if="{{item.kind === 'pay'}}" class="btn btn-sm"
+                  data-charge-id="{{item.chargeId}}" data-amount="{{item.amount}}"
+                  data-teacher-name="{{item.teacherName}}" bindtap="onConfirmPay">确认收款</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>{{todoEmpty}}</view>
+  </block>
+</view>

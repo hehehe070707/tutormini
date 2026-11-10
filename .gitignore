@@ -1,0 +1,27 @@
+# Local runtime and database files
+server/data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Private user/machine settings
+project.private.config.json
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+miniprogram_npm/
+dist/
+
+# Downloaded tunnel binary
+cloudflared.exe
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

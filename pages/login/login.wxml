@@ -1,0 +1,66 @@
+<view class="page-plain login">
+  <view class="row login-top">
+    <button class="btn-ghost" bindtap="onBack">← 返回</button>
+  </view>
+
+  <view class="login-title">🎓 家教平台</view>
+  <view class="login-sub">浏览不用登录：发布需求、投递简历、确认接单这些要用到身份的动作才需要选一个账号</view>
+
+  <view class="card intent-tip" wx:if="{{intentTip}}">{{intentTip}}</view>
+
+  <!-- 身份切换：同一时间只显示选中的这一种身份 -->
+  <view class="row">
+    <button class="{{role === 'student' ? 'btn' : 'btn-ghost'}} grow"
+            data-role="student" bindtap="onPickRole">🧑‍🎓 学生</button>
+    <view class="btn-gap"></view>
+    <button class="{{role === 'teacher' ? 'btn' : 'btn-ghost'}} grow"
+            data-role="teacher" bindtap="onPickRole">🧑‍🏫 老师</button>
+  </view>
+  <view class="gap"></view>
+
+  <!-- 学生登录 / 注册 -->
+  <view class="card" wx:if="{{role === 'student'}}">
+    <view class="field">
+      <view class="field-label">姓名</view>
+      <input class="input" placeholder="姓名" value="{{studentName}}"
+             data-field="studentName" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">密码</view>
+      <input class="input" password placeholder="密码" value="{{studentPassword}}"
+             data-field="studentPassword" bindinput="onInput" />
+    </view>
+
+    <view class="row">
+      <button class="btn-ghost grow" bindtap="registerStudent">注册新学生</button>
+      <view class="btn-gap"></view>
+      <button class="btn grow" bindtap="loginStudent">登录</button>
+    </view>
+
+    <view class="gap"></view>
+    <view class="muted">没有账号就点【注册新学生】。</view>
+  </view>
+
+  <!-- 老师登录 / 注册：只要姓名 + 密码，科目价格位置这些登录后在【我的】页填 -->
+  <view class="card" wx:if="{{role === 'teacher'}}">
+    <view class="field">
+      <view class="field-label">姓名</view>
+      <input class="input" placeholder="姓名" value="{{teacherName}}"
+             data-field="teacherName" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">密码</view>
+      <input class="input" password placeholder="密码" value="{{teacherPassword}}"
+             data-field="teacherPassword" bindinput="onInput" />
+    </view>
+
+    <view class="row">
+      <button class="btn-ghost grow" bindtap="registerTeacher">注册新老师</button>
+      <view class="btn-gap"></view>
+      <button class="btn grow" bindtap="loginTeacher">登录</button>
+    </view>
+
+    <view class="gap"></view>
+    <view class="muted">没有账号就点【注册新老师】；登录后去【我的】页填科目、价格和位置，学生才找得到你。老数据里的老师默认密码是 123456。</view>
+  </view>
+</view>

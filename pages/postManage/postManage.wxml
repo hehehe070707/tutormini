@@ -1,0 +1,128 @@
+<view class="page">
+  <view class="card guest-tip" wx:if="{{missing}}">
+    <view class="muted">{{missing}}</view>
+  </view>
+
+  <block wx:elif="{{loaded && post}}">
+    <!-- ① 这条单的全部属性 -->
+    <view class="card pm-head">
+      <view class="pm-title">
+        <text class="pm-code">{{post.code}}</text>
+        <text class="pm-subject">{{post.subjectText}}</text>
+        <text class="pm-status {{post.statusClass}}">{{post.status}}</text>
+        <text class="red-dot" wx:if="{{pendingCount > 0}}"></text>
+      </view>
+      <view class="muted">发布 {{post.createdAt}}</view>
+      <view class="pm-attrs">
+        <view class="muted">上课时间：{{post.timeText}}</view>
+        <view class="muted">价格：{{post.price}}</view>
+        <view class="muted">位置：{{post.area}}</view>
+        <view class="muted">说明：{{post.note}}</view>
+        <view class="muted">对老师的要求：{{post.requirementText}}</view>
+        <view class="muted">家长原话：{{post.rawText}}</view>
+        <view class="muted">{{post.inviteText}}</view>
+      </view>
+      <view class="pm-ops">
+        <button class="btn-ghost btn-sm" bindtap="onCopyCode">复制单号</button>
+        <button class="btn-ghost btn-sm" bindtap="onCopyPost">复制需求</button>
+        <button class="btn-ghost btn-sm" bindtap="onCopyInvites">复制简历合集</button>
+        <button wx:if="{{canClose}}" class="btn-danger btn-sm" bindtap="onClosePost">撤销</button>
+      </view>
+    </view>
+
+    <!-- ② 收到的投递：只看（看简历 / 看老师资料）；红点＝还有没处理的投递 -->
+    <view class="page-title section">收到的投递<text class="red-dot" wx:if="{{pendingCount > 0}}"></text></view>
+    <view class="muted pm-hint" wx:if="{{invites.length > 0}}">点老师名字看资料，简历点【看简历】。定人 / 回绝都在【工作台】的待办里点。</view>
+    <view class="list" wx:if="{{invites.length > 0}}">
+      <view class="list-row pm-invite" wx:for="{{invites}}" wx:key="bookingId">
+        <view class="grow">
+          <view class="pm-invite-name" data-teacher-id="{{item.teacherId}}" bindtap="onOpenTeacher">
+            {{item.teacherName}} 老师<text class="pm-status {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+        </view>
+        <button wx:if="{{item.pending}}" class="btn-ghost btn-sm" data-name="{{item.teacherName}}"
+                data-resume="{{item.resume}}" bindtap="onShowResume">看简历</button>
+      </view>
+    </view>
+    <view class="empty" wx:else>还没有老师投递。</view>
+
+    <!-- ③ 合同收款：定下老师之后这一块才出现，这里只看（发合同 / 确认收款在待办里） -->
+    <block wx:if="{{bookings.length > 0}}">
+      <view class="page-title section">合同与收款</view>
+      <view class="muted pm-hint">发合同 / 收款码、确认收款都在【工作台】的待办里点。</view>
+      <view class="list">
+        <view class="list-row pm-booking" wx:for="{{bookings}}" wx:key="id">
+          <view class="grow">
+            <view class="pm-invite-name">{{item.teacherName}} 老师
+              <text class="pm-status {{item.statusClass}}">{{item.statusText}}</text></view>
+            <view class="muted">{{item.priceText}}</view>
+            <view class="muted" wx:if="{{item.payText}}"><text class="{{item.payClass}}">{{item.payText}}</text></view>
+          </view>
+          <button wx:if="{{item.contractUrl}}" class="btn-ghost btn-sm" data-url="{{item.contractUrl}}"
+                  bindtap="onCopyContract">复制合同链接</button>
+        </view>
+      </view>
+    </block>
+
+    <!-- ④ 修正：中介手动兜底（家长不在小程序里，状态以中介问到的为准） -->
+    <view class="page-title section">修正</view>
+    <view class="card fix-card">
+      <view class="fix-label">单子状态</view>
+      <view class="fix-row">
+        <picker class="grow" range="{{fixPostOptions}}" value="{{fixPostIndex}}" bindchange="onFixPostPick">
+          <view class="picker-value">{{fixPostOptions[fixPostIndex]}}</view>
+        </picker>
+        <button class="btn btn-sm fix-save" bindtap="onFixSavePost">保存</button>
+      </view>
+
+      <block wx:if="{{bookings.length > 0}}">
+        <view class="fix-label">订单状态</view>
+        <view class="fix-row" wx:for="{{bookings}}" wx:key="id">
+          <view class="grow">{{item.teacherName}} 老师</view>
+          <picker range="{{fixBookingOptions}}" value="{{item.statusIndex}}"
+                  data-index="{{index}}" bindchange="onFixBookingPick">
+            <view class="picker-value">{{fixBookingOptions[item.statusIndex]}}</view>
+          </picker>
+          <button class="btn-ghost btn-sm fix-save" data-index="{{index}}"
+                  bindtap="onFixSaveBooking">保存</button>
+        </view>
+      </block>
+
+      <view class="fix-label">补录一条线下成交的订单</view>
+      <view class="fix-row" wx:if="{{fixTeachers.length > 0}}">
+        <view class="grow">老师</view>
+        <picker range="{{fixTeachers}}" range-key="name" value="{{fixTeacherIndex}}"
+                bindchange="onFixTeacherPick">
+          <view class="picker-value">{{fixTeachers[fixTeacherIndex].name}}</view>
+        </picker>
+      </view>
+      <view class="muted" wx:else>这条单还没有老师投过，没人可以补录。</view>
+      <view class="fix-row">
+        <view class="grow">价格</view>
+        <input class="input" placeholder="例如：150 元/小时" value="{{fixRecordPrice}}"
+               bindinput="onFixRecordPriceInput" />
+      </view>
+      <view class="fix-row">
+        <view class="grow">订单状态</view>
+        <picker range="{{fixRecordStatusOptions}}" value="{{fixRecordStatusIndex}}"
+                bindchange="onFixRecordStatusPick">
+          <view class="picker-value">{{fixRecordStatusOptions[fixRecordStatusIndex]}}</view>
+        </picker>
+      </view>
+      <button class="btn btn-sm" bindtap="onFixRecord">补录订单</button>
+
+      <view class="fix-row fix-notify">
+        <view class="grow muted">改完给老师发一条通知</view>
+        <switch checked="{{notify}}" bindchange="onToggleNotify" />
+      </view>
+      <view class="muted fix-log" wx:for="{{logs}}" wx:key="*this">{{item}}</view>
+
+      <view class="fix-void">
+        <button class="btn-danger" bindtap="onFixVoid">作废这条单</button>
+      </view>
+      <view class="muted">作废是软删：状态改成已关闭，数据一条不删，历史里还能翻。</view>
+    </view>
+  </block>
+
+  <view class="empty" wx:else>正在读取…</view>
+</view>

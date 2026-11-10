@@ -1,0 +1,18 @@
+/* 批量发单：沿用全局色板，这里只补两处排版 */
+.batch-row {
+  align-items: flex-start;
+}
+
+.batch-row .field {
+  margin-top: 6rpx;
+}
+
+.batch-row .btn-ghost {
+  flex-shrink: 0;
+}
+
+/* 每条「家长原话」右边那个解析按钮：字号小一点，别喧宾夺主 */
+.raw-parse {
+  margin-top: 6rpx;
+  font-size: 12px;
+}

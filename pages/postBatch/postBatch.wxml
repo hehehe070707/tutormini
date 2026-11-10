@@ -1,0 +1,168 @@
+<view class="page">
+  <view class="row top">
+    <button class="btn-ghost" bindtap="onBack">← 返回</button>
+    <view class="grow"></view>
+    <view class="page-title">批量发单</view>
+  </view>
+
+  <view class="muted">一行一条，科目和上课时间必填。位置只填片区（例如「海淀 · 中关村」），不要写门牌号和联系方式——老师端看不到这些。</view>
+  <view class="muted">「对老师的要求」就是那 5 个固定字段（性别 / 学历 / 教龄 / 证书 / 授课方式）：把家长原话贴进来点【解析原话】，系统自动填；「不限」＝家长没提，不参与筛选。</view>
+  <view class="gap"></view>
+
+  <!-- 家长原话批量解析：一行一条 → 一次全解析 → 每条生成一行（科目 / 时间再补上） -->
+  <view class="card">
+    <view class="field-label">家长原话（一行一条，可批量解析）</view>
+    <textarea class="textarea" placeholder="要女老师，硕士以上，最好有经验，能线下&#10;男老师，3 年以上教龄，有教师资格证，线下"
+              value="{{rawPasteText}}" bindinput="onRawPasteInput" maxlength="4000" />
+    <view class="row">
+      <button class="btn grow" bindtap="onParseRawPaste" disabled="{{parsingRaw}}">
+        {{parsingRaw ? '解析中…' : '解析原话并加入列表'}}
+      </button>
+      <view class="btn-gap"></view>
+      <button class="btn-ghost" bindtap="onParseAllRows" disabled="{{parsingRaw}}">解析列表里的原话</button>
+    </view>
+  </view>
+
+  <!-- 粘贴导入：整段 JSON，或者从表格里复制的多行文本 -->
+  <view class="card">
+    <view class="field-label">粘贴导入（可选）</view>
+    <textarea class="textarea" placeholder="① JSON：[{&quot;subject&quot;:&quot;数学&quot;,&quot;time&quot;:&quot;周六上午&quot;,&quot;price&quot;:&quot;150 元/小时&quot;,&quot;grade&quot;:&quot;初二&quot;,&quot;raw_text&quot;:&quot;要女老师，硕士以上，能线下&quot;,&quot;requirements&quot;:{&quot;minYears&quot;:3,&quot;certificate&quot;:&quot;教师资格证&quot;,&quot;priceMin&quot;:100,&quot;priceMax&quot;:150}}]&#10;② 一行一条：数学,周六上午,150 元/小时,海淀·中关村,初二补函数,初二,女,本科,3,100-150,985/211优先,教师资格证,要女老师硕士以上"
+              value="{{pasteText}}" bindinput="onPasteInput" maxlength="4000" />
+    <view class="row">
+      <button class="btn grow" bindtap="onImport">解析并加入列表</button>
+      <view class="btn-gap"></view>
+      <button class="btn-ghost" bindtap="onClear">清空</button>
+    </view>
+  </view>
+
+  <!-- 手动加行 -->
+  <view class="list">
+    <view class="list-row batch-row" wx:for="{{rows}}" wx:key="key">
+      <view class="grow">
+        <view class="muted">第 {{index + 1}} 条</view>
+        <view class="field">
+          <view class="field-label">科目</view>
+          <input class="input" placeholder="例如：数学" value="{{item.subject}}"
+                 data-index="{{index}}" data-field="subject" bindinput="onRowInput" />
+        </view>
+        <view class="field">
+          <view class="field-label">上课时间</view>
+          <input class="input" placeholder="例如：周六上午 9 点" value="{{item.time}}"
+                 data-index="{{index}}" data-field="time" bindinput="onRowInput" />
+        </view>
+        <view class="field">
+          <view class="field-label">价格</view>
+          <input class="input" placeholder="例如：150 元/小时" value="{{item.price}}"
+                 data-index="{{index}}" data-field="price" bindinput="onRowInput" />
+        </view>
+        <view class="field">
+          <view class="field-label">位置（片区）</view>
+          <input class="input" placeholder="例如：海淀 · 中关村" value="{{item.area}}"
+                 data-index="{{index}}" data-field="area" bindinput="onRowInput" />
+        </view>
+        <view class="field">
+          <view class="field-label">备注</view>
+          <input class="input" placeholder="例如：初二数学，想补函数" value="{{item.note}}"
+                 data-index="{{index}}" data-field="note" bindinput="onRowInput" />
+        </view>
+        <!-- 家长原话：点【解析这条原话】自动填下面的 5 个固定字段（解析不出来就全「不限」） -->
+        <view class="field">
+          <view class="field-label">家长原话（可留空）</view>
+          <input class="input" placeholder="例如：要女老师，硕士以上，能线下" value="{{item.rawText}}"
+                 data-index="{{index}}" data-field="rawText" bindinput="onRowInput" />
+          <button class="btn-ghost btn-sm raw-parse" data-index="{{index}}" bindtap="onParseRow">✨ 解析这条原话</button>
+        </view>
+        <!-- 对老师的要求：老师端照着判断"我符不符合" -->
+        <view class="row">
+          <view class="field grow">
+            <view class="field-label">年级</view>
+            <picker range="{{gradeOptions}}" value="{{item.gradeIndex}}"
+                    data-index="{{index}}" data-field="gradeIndex" bindchange="onRowPick">
+              <view class="picker-value">{{gradeOptions[item.gradeIndex]}}</view>
+            </picker>
+          </view>
+          <view class="btn-gap"></view>
+          <view class="field grow">
+            <view class="field-label">老师性别要求</view>
+            <picker range="{{genderOptions}}" value="{{item.genderIndex}}"
+                    data-index="{{index}}" data-field="genderIndex" bindchange="onRowPick">
+              <view class="picker-value">{{genderOptions[item.genderIndex]}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="row">
+          <view class="field grow">
+            <view class="field-label">学历要求</view>
+            <picker range="{{eduOptions}}" value="{{item.educationIndex}}"
+                    data-index="{{index}}" data-field="educationIndex" bindchange="onRowPick">
+              <view class="picker-value">{{eduOptions[item.educationIndex]}}</view>
+            </picker>
+          </view>
+          <view class="btn-gap"></view>
+          <view class="field grow">
+            <view class="field-label">最低教龄（年）</view>
+            <picker range="{{yearsOptions}}" value="{{item.yearsIndex}}"
+                    data-index="{{index}}" data-field="yearsIndex" bindchange="onRowPick">
+              <view class="picker-value">{{yearsOptions[item.yearsIndex]}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="row">
+          <view class="field grow">
+            <view class="field-label">证书要求</view>
+            <picker range="{{certOptions}}" value="{{item.certIndex}}"
+                    data-index="{{index}}" data-field="certIndex" bindchange="onRowPick">
+              <view class="picker-value">{{certOptions[item.certIndex]}}</view>
+            </picker>
+          </view>
+          <view class="btn-gap"></view>
+          <view class="field grow">
+            <view class="field-label">授课方式</view>
+            <picker range="{{teachModeOptions}}" value="{{item.teachModeIndex}}"
+                    data-index="{{index}}" data-field="teachModeIndex" bindchange="onRowPick">
+              <view class="picker-value">{{teachModeOptions[item.teachModeIndex]}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="row">
+          <view class="field grow">
+            <view class="field-label">时薪（元/小时，如 100-200）</view>
+            <input class="input" placeholder="不限" value="{{item.hourly}}"
+                   data-index="{{index}}" data-field="hourly" bindinput="onRowInput" />
+          </view>
+          <view class="btn-gap"></view>
+          <view class="field grow">
+            <view class="field-label">学校要求</view>
+            <input class="input" placeholder="如：985/211优先" value="{{item.school}}"
+                   data-index="{{index}}" data-field="school" bindinput="onRowInput" />
+          </view>
+        </view>
+      </view>
+      <button class="btn-ghost btn-sm" data-index="{{index}}" bindtap="onDelRow">删除</button>
+    </view>
+  </view>
+
+  <view class="gap"></view>
+  <button class="btn-ghost" bindtap="onAddRow">＋ 再加一条</button>
+  <view class="gap"></view>
+  <button class="btn" bindtap="onSubmit" disabled="{{submitting}}">
+    {{submitting ? '发布中…' : '发布 ' + rows.length + ' 条'}}
+  </button>
+
+  <!-- 结果：成功几条、失败的是哪几条 -->
+  <block wx:if="{{resultText}}">
+    <view class="gap"></view>
+    <view class="card">
+      <view class="page-title section">发布结果</view>
+      <view class="muted">{{resultText}}</view>
+      <view class="list" wx:if="{{failed.length > 0}}">
+        <view class="list-row" wx:for="{{failed}}" wx:key="label">
+          <view class="grow">
+            <view class="r-name">{{item.label}}</view>
+            <view class="muted">{{item.reason}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

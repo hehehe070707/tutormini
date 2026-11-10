@@ -1,0 +1,28 @@
+.detail { padding-bottom: 84px; }
+.top { margin-bottom: 12px; }
+.info { margin-left: 12px; }
+.section { margin: 14px 0 8px; }
+.r-row { display: flex; margin-bottom: 8px; }
+.r-intro-row { margin-bottom: 0; }
+.r-label { width: 76px; color: #6B7280; font-size: 13px; flex-shrink: 0; }
+.r-value { flex: 1; font-size: 14px; color: #1F2328; }
+.review-row { align-items: flex-start; }
+.r-name { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+.r-content { font-size: 14px; margin-bottom: 2px; }
+.stars { color: #2FD3BE; font-size: 13px; margin-bottom: 2px; }
+.my-review { margin: 10px 0; white-space: pre-wrap; }
+.star-picker { margin-bottom: 8px; }
+.star-tip { margin-right: 6px; }
+.star { font-size: 26px; color: #DDE1E6; padding-right: 8px; }
+.star-on { color: #2FD3BE; }
+.review-input { height: 80px; margin-bottom: 8px; }
+
+/* 底部固定动作条 */
+.bottom-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border-top: 1px solid #ECEFF3;
+  z-index: 10;
+}

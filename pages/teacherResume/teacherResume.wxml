@@ -1,0 +1,58 @@
+<view class="page-plain">
+  <view class="row top">
+    <button class="btn-ghost" bindtap="onBack">← 返回</button>
+    <view class="grow"></view>
+    <view class="page-title">我的简历</view>
+  </view>
+
+  <view class="gap"></view>
+  <view class="muted">{{hint}}</view>
+  <view class="gap"></view>
+
+  <view class="card">
+    <view class="field">
+      <view class="field-label">学历</view>
+      <input class="input" placeholder="例如：本科 / 硕士" value="{{education}}"
+             data-field="education" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">学校</view>
+      <input class="input" placeholder="例如：北京师范大学" value="{{school}}"
+             data-field="school" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">教龄</view>
+      <input class="input" placeholder="例如：5 年" value="{{years}}"
+             data-field="years" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">证书</view>
+      <input class="input" placeholder="例如：教师资格证、普通话二甲" value="{{certificate}}"
+             data-field="certificate" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">可教科目</view>
+      <input class="input" placeholder="例如：数学" value="{{subject}}"
+             data-field="subject" bindinput="onInput" />
+      <picker range="{{subjectOptions}}" value="{{subjectIndex}}" bindchange="onSubjectPick">
+        <view class="pick-btn">选择</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">价格</view>
+      <input class="input" placeholder="例如：150 元/小时、面议" value="{{price}}"
+             data-field="price" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">可教时段</view>
+      <input class="input" placeholder="例如：周六周日上午、工作日晚 7 点后" value="{{times}}"
+             data-field="times" bindinput="onInput" />
+    </view>
+    <view class="field field-top">
+      <view class="field-label">自我介绍</view>
+      <textarea class="textarea" placeholder="介绍一下你的教学经历和风格（投递简历时会带过去）"
+                value="{{intro}}" data-field="intro" bindinput="onInput" maxlength="300" />
+    </view>
+    <button class="btn" bindtap="onSave">保存简历</button>
+  </view>
+</view>

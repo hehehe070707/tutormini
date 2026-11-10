@@ -1,0 +1,20 @@
+.profile-avatar { margin: 10px auto 8px; }
+.center { text-align: center; }
+.stat { font-size: 14px; font-weight: bold; }
+.section { margin: 14px 0 8px; }
+
+.r-content { font-size: 14px; margin-bottom: 2px; }
+.reply-input { height: 80px; margin-bottom: 4px; }
+.logout { margin: 10px auto 0; width: 160px; }
+.pick-btn {
+  margin-left: 6px;
+  padding: 8px 10px;
+  border: 1px solid #CFF0EA;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #0A9C90;
+  font-size: 13px;
+}
+
+.guest-tip { background: #F3FBFA; border-color: #CFF0EA; }
+.btn-gap { width: 8px; }

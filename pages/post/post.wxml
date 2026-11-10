@@ -1,0 +1,423 @@
+<view class="page">
+  <view class="row-between">
+    <view class="page-title">{{title}}</view>
+    <view class="row">
+      <button wx:if="{{studentMode}}" class="btn-ghost btn-sm" bindtap="onBatch">批量发单</button>
+      <view class="btn-gap" wx:if="{{studentMode && publishText}}"></view>
+      <button wx:if="{{publishText}}" class="btn btn-sm" bindtap="openPublish">{{publishText}}</button>
+    </view>
+  </view>
+
+  <view class="gap"></view>
+  <view class="muted">{{hint}}</view>
+  <view class="gap"></view>
+
+  <!-- 只显示附近多远以内的单（默认 45 公里，可调）：老师接单 / 访客浏览时用 -->
+  <view class="card nearby-bar" wx:if="{{showNearby}}">
+    <view class="field">
+      <view class="field-label">距离</view>
+      <picker class="grow" range="{{radiusOptions}}" value="{{radiusIndex}}" bindchange="onRadiusChange">
+        <view class="picker-value">{{radiusOptions[radiusIndex]}}</view>
+      </picker>
+    </view>
+    <view class="row-between">
+      <view class="grow muted">{{nearbyTip}}</view>
+      <button wx:if="{{nearbyAction}}" class="btn-ghost btn-sm" bindtap="onNearbyAction">{{nearbyActionText}}</button>
+    </view>
+  </view>
+
+  <!-- 访客：先看大家的单，动手（发单 / 接单）时再选身份 -->
+  <view class="list" wx:if="{{guest && guestList.length > 0}}">
+    <view class="list-row" wx:for="{{guestList}}" wx:key="id">
+      <view class="grow post-info" data-src="guest" data-index="{{index}}" bindtap="onShowPostDetail">
+        <view class="p-name">{{item.publisherName}} · {{item.subject}} <text class="muted">#{{item.code}}</text></view>
+        <view class="muted">{{item.roleText}} · {{item.timeText}} · {{item.price}}</view>
+        <view class="muted">位置：{{item.area}}<text wx:if="{{item.distanceText}}">　{{item.distanceText}}</text></view>
+        <view class="muted note-clamp">{{item.note}}</view>
+        <view class="more-tip">点这里看完整需求 ›</view>
+      </view>
+      <button class="btn btn-sm" bindtap="onLogin">登录后发单</button>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{guest && guestList.length === 0}}">{{takeEmpty}}</view>
+
+  <!-- 老师：上面是可接的单，下面是我接到的课 -->
+  <block wx:if="{{teacherMode}}">
+    <!--
+      筛选是双向的，两组勾选框都能多选：
+        第一向 单子本身（年级/科目/时间/最低时薪/距离）+ 单子的要求（要什么样的老师）
+        第二向 我自己的情况（我是谁）+ 只看我符合条件的单（按「我的简历」算）
+    -->
+    <view class="card filter-card">
+      <view class="row-between">
+        <view class="grow">
+          <view class="filter-title">筛选</view>
+          <view class="muted">{{filterSummary}}</view>
+        </view>
+        <button class="btn-ghost btn-sm" bindtap="onToggleFilter">{{showFilter ? '收起' : '调整'}}</button>
+      </view>
+
+      <view class="filter-body" wx:if="{{showFilter}}">
+        <!-- 第一向：单子本身（年级 / 科目 / 时间 / 最低时薪 / 距离）-->
+        <view class="row">
+          <view class="field grow">
+            <view class="field-label">年级</view>
+            <picker range="{{gradeOptions}}" value="{{filterGradeIndex}}" bindchange="onFilterGrade">
+              <view class="picker-value">{{gradeOptions[filterGradeIndex]}}</view>
+            </picker>
+          </view>
+          <view class="btn-gap"></view>
+          <view class="field grow">
+            <view class="field-label">最低时薪（元/小时）</view>
+            <input class="input" type="number" placeholder="不限" value="{{filterMinPrice}}" bindinput="onFilterMinPrice" />
+          </view>
+        </view>
+        <view class="field">
+          <view class="field-label">科目</view>
+          <input class="input" placeholder="例如：数学（可留空）" value="{{filterSubject}}" bindinput="onFilterSubject" />
+        </view>
+        <view class="field">
+          <view class="field-label">上课时间</view>
+          <input class="input" placeholder="例如：周末、晚上（可留空）" value="{{filterTime}}" bindinput="onFilterTime" />
+        </view>
+
+        <!-- 第二向 A：单子的要求（家长原话解析出来的，可多选；不勾＝这条不筛） -->
+        <view class="page-title section">单子的要求（可多选）</view>
+        <view class="field">
+          <view class="field-label">要男老师 / 女老师（不勾＝不限）</view>
+          <checkbox-group data-field="gender" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.gender}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">学历要求</view>
+          <checkbox-group data-field="education" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.education}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">证书要求</view>
+          <checkbox-group data-field="certificate" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.certificate}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">授课方式要求</view>
+          <checkbox-group data-field="teachMode" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.teachMode}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+
+        <!-- 第二向 B：我自己的情况（勾了就拿它去卡单子，不改「我的简历」） -->
+        <view class="page-title section">我自己的情况（可多选，不勾＝按简历）</view>
+        <view class="field">
+          <view class="field-label">我是</view>
+          <checkbox-group data-field="myGender" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.myGender}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">我的学历</view>
+          <checkbox-group data-field="myEducation" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.myEducation}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">我的证书</view>
+          <checkbox-group data-field="myCertificate" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.myCertificate}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+        <view class="field">
+          <view class="field-label">我能上的课</view>
+          <checkbox-group data-field="myTeachMode" bindchange="onFilterCheck">
+            <label class="pick-item" wx:for="{{filterItems.myTeachMode}}" wx:key="name">
+              <checkbox value="{{item.name}}" checked="{{item.checked}}" />{{item.label}}
+            </label>
+          </checkbox-group>
+        </view>
+
+        <view class="field">
+          <view class="field-label">距离范围（默认 30 公里）</view>
+          <picker range="{{radiusOptions}}" value="{{radiusIndex}}" bindchange="onRadiusChange">
+            <view class="picker-value">{{radiusOptions[radiusIndex]}}</view>
+          </picker>
+        </view>
+        <view class="row-between">
+          <view class="grow muted">只看我符合条件的单（关掉＝显示全部单）</view>
+          <switch checked="{{onlyMatch}}" bindchange="onToggleOnlyMatch" />
+        </view>
+        <view class="row">
+          <button class="btn grow" bindtap="onApplyFilter">应用筛选</button>
+          <view class="btn-gap"></view>
+          <button class="btn-ghost" bindtap="onResetFilter">重置</button>
+        </view>
+      </view>
+    </view>
+    <view class="list" wx:if="{{takeList.length > 0}}">
+      <block wx:for="{{takeList}}" wx:key="id">
+      <!-- 符合要求的在上面，不完全符合的排在下面，中间这条分界线提示一下 -->
+      <view class="group-divider" wx:if="{{index === firstNonMatch}}">
+        <view class="group-divider-text">{{nonMatchTip}}</view>
+      </view>
+      <view class="list-row">
+        <view class="grow post-info" data-src="take" data-index="{{index}}" bindtap="onShowPostDetail">
+          <view class="p-name">{{item.publisherName}} · {{item.subject}}<text wx:if="{{item.grade}}" class="muted">（{{item.grade}}）</text> <text class="muted">#{{item.code}}</text></view>
+          <view class="match-line" wx:if="{{item.matchBadge}}">
+            <text class="match-badge {{item.matchClass}}">{{item.matchBadge}}</text>
+            <text class="muted match-tip">{{item.matchTip}}</text>
+          </view>
+          <view class="muted" wx:if="{{item.requirementText}}">要求：{{item.requirementText}}</view>
+          <view class="muted note-clamp" wx:if="{{item.rawText}}">家长原话：{{item.rawText}}</view>
+          <view class="muted">{{item.timeText}} · {{item.price}}<text class="clash-tip" wx:if="{{item.timeConflict}}"> · 时间冲突</text></view>
+          <view class="muted">位置：{{item.area}}<text wx:if="{{item.distanceText}}">　{{item.distanceText}}</text></view>
+          <view class="muted note-clamp">{{item.note}}</view>
+          <view class="more-tip">点这里看完整需求和我的匹配情况 ›</view>
+        </view>
+        <view class="p-ops">
+          <button wx:if="{{!item.applied}}" class="btn btn-sm p-take" data-index="{{index}}" bindtap="onTake">投递简历</button>
+          <button wx:else class="btn-ghost btn-sm p-take" disabled>已投递</button>
+        </view>
+      </view>
+      </block>
+    </view>
+    <view class="empty" wx:else>{{takeEmpty}}</view>
+
+    <view class="page-title section">{{coursesTitle}}</view>
+    <view class="muted" wx:if="{{courses.length > 0}}">投递中 / 试课中 / 主订单进行中的课都在这里；投递后不想接了可以【撤回投递】，已经定下来的课可以【取消预约】或【结束订单】。这条单子走到哪一步，在【消息】页的单子卡片里。</view>
+    <view class="list" wx:if="{{courses.length > 0}}">
+      <view class="list-row post-row" wx:for="{{courses}}" wx:key="id">
+        <view class="grow">
+          <view class="p-name">{{item.name}} <text class="{{item.statusClass}}">{{item.status}}</text></view>
+          <view class="muted">{{item.subject}} · {{item.price}}</view>
+          <view class="muted">{{item.timeText}}</view>
+
+          <!-- 课次流水：试课 / 第 N 次课，平台有异议的老师要改完重新提交 -->
+          <view class="lesson-box" wx:if="{{item.lessons.length > 0}}">
+            <view class="lesson-row" wx:for="{{item.lessons}}" wx:for-item="lesson" wx:key="id">
+              <view class="grow">
+                <view class="lesson-title">{{lesson.label}} · <text class="{{lesson.statusClass}}">{{lesson.statusText}}</text></view>
+                <view class="muted" wx:if="{{lesson.content}}">情况：{{lesson.content}}</view>
+                <view class="muted" wx:if="{{lesson.feeText}}">{{lesson.feeText}}</view>
+                <view class="muted" wx:if="{{lesson.reason}}">平台异议：{{lesson.reason}}</view>
+              </view>
+              <view class="p-ops" wx:if="{{lesson.needsFix || lesson.withdrawable}}">
+                <button wx:if="{{lesson.needsFix}}" class="btn btn-sm" data-lesson-id="{{lesson.id}}"
+                        bindtap="onResubmitLesson">改后重新提交</button>
+                <button wx:if="{{lesson.withdrawable}}" class="btn-ghost btn-sm" data-lesson-id="{{lesson.id}}"
+                        bindtap="onWithdrawLesson">撤回</button>
+              </view>
+            </view>
+          </view>
+          <!-- 收款：平台发合同 + 收款码 → 老师「我已付款」→ 平台确认收款 -->
+          <view class="muted" wx:if="{{item.chargeStatusText}}">
+            <text class="{{item.chargeClass}}">{{item.chargeStatusText}}</text>
+            <text wx:if="{{item.refundedAmount > 0}}"> · 已退 {{item.refundedAmount}} 元</text>
+          </view>
+          <view class="muted" wx:if="{{item.payGateTip}}">{{item.payGateTip}}</view>
+          <view class="muted" wx:if="{{item.confirmedCount > 0 || item.unpaidAmount > 0}}">
+            已确认 {{item.confirmedCount}} 次<text wx:if="{{item.unpaidAmount > 0}}"> · 待收 {{item.unpaidAmount}} 元</text>
+            <text wx:if="{{item.paidAmount > 0}}"> · 已收 {{item.paidAmount}} 元</text>
+          </view>
+        </view>
+        <view class="p-ops">
+          <button wx:if="{{item.canClaimPaid}}" class="btn btn-sm p-take"
+                  data-charge-id="{{item.chargeId}}" data-charge-amount="{{item.chargeAmount}}"
+                  bindtap="onClaimPaid">我已付款</button>
+          <button wx:if="{{item.contractUrl}}" class="btn-ghost btn-sm"
+                  data-url="{{item.contractUrl}}" bindtap="onCopyContract">复制合同链接</button>
+          <!-- 试课中还没提交试课 → 提交试课完成；主订单里没有待确认的课次 → 完成本次 -->
+          <button wx:if="{{item.canSubmitTrial}}" class="btn btn-sm p-take"
+                  data-index="{{index}}" bindtap="onSubmitTrial">提交试课完成</button>
+          <button wx:if="{{item.canSubmitFormal}}" class="btn btn-sm p-take"
+                  data-index="{{index}}" bindtap="onSubmitFormal">完成本次</button>
+          <!-- 投递还在等平台确认 → 可以撤回；课定下来之后可以取消预约 / 结束订单 -->
+          <button wx:if="{{item.withdrawable}}" class="btn-ghost btn-sm" data-index="{{index}}"
+                  bindtap="onWithdrawApply">撤回投递</button>
+          <button wx:if="{{item.canFinish}}" class="btn-ghost btn-sm" data-index="{{index}}"
+                  bindtap="onFinishOrder">结束订单</button>
+          <button wx:if="{{item.cancellable}}" class="btn-danger btn-sm p-take"
+                  data-index="{{index}}" bindtap="onCancelCourse">取消</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>{{coursesEmpty}}</view>
+  </block>
+
+  <!--
+    中介（登录身份是「学生」）：这一页只剩"发单"
+    中介的主界面是【工作台】（pages/workbench），待办 / 我发布的 / 修正在那三层页面里；
+    这一页就是填需求 → 发出去，发完回工作台看待办。
+  -->
+  <block wx:if="{{studentMode}}">
+    <view class="card pub-tip">
+      <view class="wb-title">发一条需求</view>
+      <view class="muted">点右上角【发布需求】填科目 / 时间 / 心理价位（家长原话可以直接粘，能自动解析成要求）；
+        一条一条发不过来就点【批量发单】。</view>
+      <view class="muted">发出去之后：老师投递、家长挑人、合同收款都在【工作台】的待办里，一步步提醒你。</view>
+    </view>
+    <button class="btn pub-big" bindtap="openPublish">＋ 发布需求</button>
+    <view class="gap"></view>
+    <button class="btn-ghost" bindtap="onBatch">批量发单（粘一批进来）</button>
+  </block>
+
+  <!-- 单子详情：列表里说明文字只露两行，点单子弹出来看全部（老师接单 / 访客浏览都能点） -->
+  <view class="mask" wx:if="{{showDetail}}" bindtap="closePostDetail"></view>
+  <view class="dialog" wx:if="{{showDetail}}">
+    <view class="dialog-title">{{detailTitle}}</view>
+    <view class="d-row" wx:for="{{detailRows}}" wx:key="label">
+      <view class="d-label">{{item.label}}</view>
+      <view class="d-value">{{item.value}}</view>
+    </view>
+    <view class="dialog-buttons">
+      <button class="btn" bindtap="closePostDetail">知道了</button>
+    </view>
+  </view>
+
+  <!-- 发布弹窗（对应 PostDialog）：科目、时间、价格、位置、说明全部自己填，不再用选择器 -->
+  <view class="mask" wx:if="{{showPublish}}" bindtap="closePublish"></view>
+  <view class="dialog" wx:if="{{showPublish}}">
+    <view class="dialog-title">{{publishText}}</view>
+
+    <view class="field">
+      <view class="field-label">科目</view>
+      <input class="input" placeholder="例如：数学" value="{{subject}}" bindinput="onSubjectInput" />
+    </view>
+    <view class="row">
+      <view class="field grow">
+        <view class="field-label">年级</view>
+        <picker range="{{gradeOptions}}" value="{{publishGradeIndex}}" bindchange="onGradePick">
+          <view class="picker-value">{{gradeOptions[publishGradeIndex]}}</view>
+        </picker>
+      </view>
+      <view class="btn-gap"></view>
+      <view class="field grow">
+        <view class="field-label">老师性别要求</view>
+        <picker range="{{genderOptions}}" value="{{publishGenderIndex}}" bindchange="onGenderPick">
+          <view class="picker-value">{{genderOptions[publishGenderIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field-label">上课时间</view>
+      <input class="input" placeholder="例如：9月25日 下午3点、周六上午"
+             value="{{time}}" bindinput="onTimeInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">价格</view>
+      <input class="input" placeholder="例如：150 元/小时、200 元/次、面议"
+             value="{{price}}" bindinput="onPriceInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">位置</view>
+      <input class="input" placeholder="例如：海淀区 · 中关村（可留空）"
+             value="{{area}}" bindinput="onAreaInput" />
+      <!-- 小程序特有的定位入口：不想手打就弹微信选点地图，用当前位置或改成别的地点 -->
+      <button class="loc-btn" bindtap="onChooseArea">📍定位</button>
+    </view>
+    <view class="field">
+      <view class="field-label">说明</view>
+      <input class="input" placeholder="说明一下需求，例如：初二数学，想补函数（可留空）"
+             value="{{note}}" bindinput="onNoteInput" />
+    </view>
+
+    <!--
+      家长原话：中介从家长那拿到的就是一段话，原样粘进来，点【智能解析】自动填下面的要求；
+      解析出来的结果直接存库里，中介不用确认（解析不出来就全「不限」，不影响发单）。
+    -->
+    <view class="field">
+      <view class="field-label">家长原话（可留空）</view>
+      <textarea class="textarea" placeholder="把家长的原话粘进来，例如：要女老师，硕士以上，最好有经验，能线下"
+                value="{{rawText}}" bindinput="onRawTextInput" maxlength="500" />
+      <view class="row">
+        <button class="btn-ghost btn-sm" bindtap="onParseRawText">{{parsing ? '解析中…' : '✨ 智能解析'}}</button>
+        <view class="grow muted parse-tip">{{parseTip}}</view>
+      </view>
+    </view>
+
+    <!-- 对老师的要求（固定 5 字段，解析自动填、也能手改；「不限」＝家长没提，不参与筛选） -->
+    <view class="page-title section">对老师的要求（默认不限）</view>
+    <view class="row">
+      <view class="field grow">
+        <view class="field-label">学历</view>
+        <picker range="{{eduOptions}}" value="{{reqEducationIndex}}" bindchange="onReqEducationPick">
+          <view class="picker-value">{{eduOptions[reqEducationIndex]}}</view>
+        </picker>
+      </view>
+      <view class="btn-gap"></view>
+      <view class="field grow">
+        <view class="field-label">最低教龄</view>
+        <picker range="{{yearsOptions}}" value="{{reqYearsIndex}}" bindchange="onReqYearsPick">
+          <view class="picker-value">{{yearsOptions[reqYearsIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="row">
+      <view class="field grow">
+        <view class="field-label">证书</view>
+        <picker range="{{certOptions}}" value="{{reqCertIndex}}" bindchange="onReqCertPick">
+          <view class="picker-value">{{certOptions[reqCertIndex]}}</view>
+        </picker>
+      </view>
+      <view class="btn-gap"></view>
+      <view class="field grow">
+        <view class="field-label">授课方式</view>
+        <picker range="{{teachModeOptions}}" value="{{reqTeachModeIndex}}" bindchange="onReqTeachModePick">
+          <view class="picker-value">{{teachModeOptions[reqTeachModeIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="row">
+      <view class="field grow">
+        <view class="field-label">学校要求（补充）</view>
+        <input class="input" placeholder="例如：985/211优先（可留空）" value="{{reqSchool}}" bindinput="onReqSchoolInput" />
+      </view>
+    </view>
+    <view class="row">
+      <view class="field grow">
+        <view class="field-label">时薪下限（元/小时）</view>
+        <input class="input" type="number" placeholder="不限" value="{{reqPriceMin}}" bindinput="onReqPriceMinInput" />
+      </view>
+      <view class="btn-gap"></view>
+      <view class="field grow">
+        <view class="field-label">时薪上限（元/小时）</view>
+        <input class="input" type="number" placeholder="不限" value="{{reqPriceMax}}" bindinput="onReqPriceMaxInput" />
+      </view>
+    </view>
+    <view class="muted">家长说"一次 300 元"这种，系统会按一次课的时长折成时薪；算不出来就按「不限」处理。</view>
+
+    <view class="dialog-buttons">
+      <button class="btn" bindtap="confirmPublish">发布</button>
+      <button class="btn-ghost" bindtap="closePublish">取消</button>
+    </view>
+  </view>
+
+  <!-- 投递简历弹窗：老师不能一键接单，先写一份自我介绍发给平台（平台确认才算接下） -->
+  <view class="mask" wx:if="{{showResume}}" bindtap="closeResume"></view>
+  <view class="dialog" wx:if="{{showResume}}">
+    <view class="dialog-title">投递简历</view>
+    <view class="muted">{{resumeTitle}}</view>
+    <view class="gap"></view>
+    <textarea class="textarea resume-input" placeholder="写几句自我介绍：教什么、什么价、什么时候有空、怎么教…"
+              value="{{resumeText}}" bindinput="onResumeInput" maxlength="300" />
+    <view class="dialog-buttons">
+      <button class="btn" bindtap="confirmResume">投递</button>
+      <button class="btn-ghost" bindtap="closeResume">取消</button>
+    </view>
+  </view>
+
+</view>
