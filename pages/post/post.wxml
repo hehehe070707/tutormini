@@ -12,7 +12,6 @@
   <view class="muted">{{hint}}</view>
   <view class="gap"></view>
 
-  <!-- 只显示附近多远以内的单（默认 45 公里，可调）：老师接单 / 访客浏览时用 -->
   <view class="card nearby-bar" wx:if="{{showNearby}}">
     <view class="field">
       <view class="field-label">距离</view>
@@ -26,7 +25,6 @@
     </view>
   </view>
 
-  <!-- 访客：先看大家的单，动手（发单 / 接单）时再选身份 -->
   <view class="list" wx:if="{{guest && guestList.length > 0}}">
     <view class="list-row" wx:for="{{guestList}}" wx:key="id">
       <view class="grow post-info" data-src="guest" data-index="{{index}}" bindtap="onShowPostDetail">
@@ -41,13 +39,8 @@
   </view>
   <view class="empty" wx:if="{{guest && guestList.length === 0}}">{{takeEmpty}}</view>
 
-  <!-- 老师：上面是可接的单，下面是我接到的课 -->
   <block wx:if="{{teacherMode}}">
-    <!--
-      筛选是双向的，两组勾选框都能多选：
-        第一向 单子本身（年级/科目/时间/最低时薪/距离）+ 单子的要求（要什么样的老师）
-        第二向 我自己的情况（我是谁）+ 只看我符合条件的单（按「我的简历」算）
-    -->
+
     <view class="card filter-card">
       <view class="row-between">
         <view class="grow">
@@ -58,7 +51,7 @@
       </view>
 
       <view class="filter-body" wx:if="{{showFilter}}">
-        <!-- 第一向：单子本身（年级 / 科目 / 时间 / 最低时薪 / 距离）-->
+
         <view class="row">
           <view class="field grow">
             <view class="field-label">年级</view>
@@ -81,7 +74,6 @@
           <input class="input" placeholder="例如：周末、晚上（可留空）" value="{{filterTime}}" bindinput="onFilterTime" />
         </view>
 
-        <!-- 第二向 A：单子的要求（家长原话解析出来的，可多选；不勾＝这条不筛） -->
         <view class="page-title section">单子的要求（可多选）</view>
         <view class="field">
           <view class="field-label">要男老师 / 女老师（不勾＝不限）</view>
@@ -116,7 +108,6 @@
           </checkbox-group>
         </view>
 
-        <!-- 第二向 B：我自己的情况（勾了就拿它去卡单子，不改「我的简历」） -->
         <view class="page-title section">我自己的情况（可多选，不勾＝按简历）</view>
         <view class="field">
           <view class="field-label">我是</view>
@@ -170,7 +161,7 @@
     </view>
     <view class="list" wx:if="{{takeList.length > 0}}">
       <block wx:for="{{takeList}}" wx:key="id">
-      <!-- 符合要求的在上面，不完全符合的排在下面，中间这条分界线提示一下 -->
+
       <view class="group-divider" wx:if="{{index === firstNonMatch}}">
         <view class="group-divider-text">{{nonMatchTip}}</view>
       </view>
@@ -206,7 +197,6 @@
           <view class="muted">{{item.subject}} · {{item.price}}</view>
           <view class="muted">{{item.timeText}}</view>
 
-          <!-- 课次流水：试课 / 第 N 次课，平台有异议的老师要改完重新提交 -->
           <view class="lesson-box" wx:if="{{item.lessons.length > 0}}">
             <view class="lesson-row" wx:for="{{item.lessons}}" wx:for-item="lesson" wx:key="id">
               <view class="grow">
@@ -223,7 +213,7 @@
               </view>
             </view>
           </view>
-          <!-- 收款：平台发合同 + 收款码 → 老师「我已付款」→ 平台确认收款 -->
+
           <view class="muted" wx:if="{{item.chargeStatusText}}">
             <text class="{{item.chargeClass}}">{{item.chargeStatusText}}</text>
             <text wx:if="{{item.refundedAmount > 0}}"> · 已退 {{item.refundedAmount}} 元</text>
@@ -240,12 +230,12 @@
                   bindtap="onClaimPaid">我已付款</button>
           <button wx:if="{{item.contractUrl}}" class="btn-ghost btn-sm"
                   data-url="{{item.contractUrl}}" bindtap="onCopyContract">复制合同链接</button>
-          <!-- 试课中还没提交试课 → 提交试课完成；主订单里没有待确认的课次 → 完成本次 -->
+
           <button wx:if="{{item.canSubmitTrial}}" class="btn btn-sm p-take"
                   data-index="{{index}}" bindtap="onSubmitTrial">提交试课完成</button>
           <button wx:if="{{item.canSubmitFormal}}" class="btn btn-sm p-take"
                   data-index="{{index}}" bindtap="onSubmitFormal">完成本次</button>
-          <!-- 投递还在等平台确认 → 可以撤回；课定下来之后可以取消预约 / 结束订单 -->
+
           <button wx:if="{{item.withdrawable}}" class="btn-ghost btn-sm" data-index="{{index}}"
                   bindtap="onWithdrawApply">撤回投递</button>
           <button wx:if="{{item.canFinish}}" class="btn-ghost btn-sm" data-index="{{index}}"
@@ -258,11 +248,6 @@
     <view class="empty" wx:else>{{coursesEmpty}}</view>
   </block>
 
-  <!--
-    中介（登录身份是「学生」）：这一页只剩"发单"
-    中介的主界面是【工作台】（pages/workbench），待办 / 我发布的 / 修正在那三层页面里；
-    这一页就是填需求 → 发出去，发完回工作台看待办。
-  -->
   <block wx:if="{{studentMode}}">
     <view class="card pub-tip">
       <view class="wb-title">发一条需求</view>
@@ -275,7 +260,6 @@
     <button class="btn-ghost" bindtap="onBatch">批量发单（粘一批进来）</button>
   </block>
 
-  <!-- 单子详情：列表里说明文字只露两行，点单子弹出来看全部（老师接单 / 访客浏览都能点） -->
   <view class="mask" wx:if="{{showDetail}}" bindtap="closePostDetail"></view>
   <view class="dialog" wx:if="{{showDetail}}">
     <view class="dialog-title">{{detailTitle}}</view>
@@ -288,7 +272,6 @@
     </view>
   </view>
 
-  <!-- 发布弹窗（对应 PostDialog）：科目、时间、价格、位置、说明全部自己填，不再用选择器 -->
   <view class="mask" wx:if="{{showPublish}}" bindtap="closePublish"></view>
   <view class="dialog" wx:if="{{showPublish}}">
     <view class="dialog-title">{{publishText}}</view>
@@ -326,7 +309,7 @@
       <view class="field-label">位置</view>
       <input class="input" placeholder="例如：海淀区 · 中关村（可留空）"
              value="{{area}}" bindinput="onAreaInput" />
-      <!-- 小程序特有的定位入口：不想手打就弹微信选点地图，用当前位置或改成别的地点 -->
+
       <button class="loc-btn" bindtap="onChooseArea">📍定位</button>
     </view>
     <view class="field">
@@ -335,10 +318,6 @@
              value="{{note}}" bindinput="onNoteInput" />
     </view>
 
-    <!--
-      家长原话：中介从家长那拿到的就是一段话，原样粘进来，点【智能解析】自动填下面的要求；
-      解析出来的结果直接存库里，中介不用确认（解析不出来就全「不限」，不影响发单）。
-    -->
     <view class="field">
       <view class="field-label">家长原话（可留空）</view>
       <textarea class="textarea" placeholder="把家长的原话粘进来，例如：要女老师，硕士以上，最好有经验，能线下"
@@ -349,7 +328,6 @@
       </view>
     </view>
 
-    <!-- 对老师的要求（固定 5 字段，解析自动填、也能手改；「不限」＝家长没提，不参与筛选） -->
     <view class="page-title section">对老师的要求（默认不限）</view>
     <view class="row">
       <view class="field grow">
@@ -406,7 +384,6 @@
     </view>
   </view>
 
-  <!-- 投递简历弹窗：老师不能一键接单，先写一份自我介绍发给平台（平台确认才算接下） -->
   <view class="mask" wx:if="{{showResume}}" bindtap="closeResume"></view>
   <view class="dialog" wx:if="{{showResume}}">
     <view class="dialog-title">投递简历</view>

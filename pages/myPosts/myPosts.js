@@ -1,14 +1,3 @@
-/*
- * 单子（中介端底部第二格）：中介从这里"查"单子，不从这儿动手干活。
- *
- * 只做一件事：把单子按状态分组列清楚（招募中 / 已成交 / 已关闭），每行只留
- * 科目年级 + 单号 + 上课时间价格 + 投递情况，点一条进三级页 pages/postManage
- * 看这条单的全部档案（属性 / 投递名单 / 合同收款 / 修正记录）。
- * 要动手做的事（确认接单、发合同、确认收款）都在【工作台】的待办里，这一页不重复放按钮；
- * 挂着没处理投递的单子这一行带一个红点（和工作台待办卡上那颗是同一个）。
- * 对应 Qt 版 PostPage 里"我发布的"那块，小程序这边是独立的一格（tabBar 第二格）。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 const util = require('../../utils/util.js');
@@ -89,7 +78,7 @@ Page({
             (pending.length > 0 ? '（待你确认 ' + pending.length + ' 条）' : '')
       });
     });
-    // 顺序：招募中 → 已成交 → 其它 → 已关闭（历史垫底）
+
     const order = [util.POST_OPEN, util.POST_TAKEN, util.POST_CLOSED];
     const sections = Object.keys(groups).map((key) => groups[key]).sort((a, b) => {
       const left = order.indexOf(a.status);
@@ -105,7 +94,6 @@ Page({
     });
   },
 
-  // 点一条单子 → 三级页：单子管理（属性 / 投递 / 合同收款 / 修正）
   onOpenManage(event) {
     const postId = Number(event.currentTarget.dataset.postId);
     if (!(postId > 0)) return;

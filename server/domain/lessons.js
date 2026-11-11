@@ -1,18 +1,3 @@
-/*
- * 课次域（新流程）：一条订单下面挂每一次课，试课也算一条（kind = 试课）。
- *
- * 订单流转：
- *   平台确认接单 → 订单「试课中」→ 老师提交试课完成（课次「待确认」）
- *     → 平台点通过：订单「主订单进行中」，这条试课课次「已确认」（计入待支付）
- *     → 平台点不通过：订单「已结束」，这条试课课次「已确认 · 不通过」（试课费照样要付）
- *     两种情况平台都要选试课费按「半价」还是「全价」，金额写在 lessons.fee 里。
- *   主订单里每上一次课：老师「完成本次」（课次「待确认」）→ 平台「确认本次」
- *     （课次「已确认」，计入已确认次数和待支付金额）→ 支付（课次「已支付」）
- *   平台「有异议」：填原因，课次退回「待确认」并通知老师，老师改完重新提交。
- *
- * 对应 Qt 版没有的东西（Qt 版只有一条订单，没有课次表），是这次新加的规则。
- */
-
 const util = require('../lib/util.js');
 const { ApiError } = require('../lib/errors.js');
 const notify = require('./notify.js');
@@ -29,7 +14,7 @@ function readLesson(row) {
     seq: Number(row.seq) || 0,
     status,
     result,
-    fee: Number(row.fee) || 0,        // 这条课次的课时费（整数元）
+    fee: Number(row.fee) || 0,
     content: row.content || '',
     reason: row.reason || '',
     statusText: util.lessonStatusText(status, result),
@@ -40,12 +25,6 @@ function readLesson(row) {
   };
 }
 
-/*
- * 一条订单的课次账（金额按每条课次自己存的 fee 累加）：
- *   已确认次数 = 已确认 + 待支付 + 已支付（试课不论通过与否都算一次课）
- *   待支付金额 = 未付的那几条的 fee 之和
- * 试课是要付费的：平台判定通过 / 不通过时选「半价」或「全价」，fee 当时定下来。
- */
 function statsOf(booking, lessons) {
   let confirmed = 0;
   let unpaid = 0;
@@ -82,7 +61,6 @@ function statsOf(booking, lessons) {
   };
 }
 
-// 一次查好一批订单的课次，贴到 booking.lessons / booking.lessonStats 上
 async function attach(db, list) {
   for (const booking of list) {
     const rows = await db.all(
@@ -90,8 +68,8 @@ async function attach(db, list) {
       [Number(booking.id)]
     );
     const lessons = rows.map(readLesson);
-    booking.lessons = lessons;                       // eslint-disable-line no-param-reassign
-    booking.lessonStats = statsOf(booking, lessons); // eslint-disable-line no-param-reassign
+    booking.lessons = lessons;
+    booking.lessonStats = statsOf(booking, lessons);
   }
   return list;
 }
@@ -116,14 +94,12 @@ async function loadLesson(db, lessonId) {
   return row;
 }
 
-// 老师那一侧：这条订单是不是我接的
 function assertTeacherOwns(booking, accountId) {
   if (Number(booking.teacher_id) !== Number(accountId)) {
     throw new ApiError('这条课不是你接的，不能操作。');
   }
 }
 
-// 平台那一侧：这条订单是不是我发的
 function assertStudentOwns(booking, accountId) {
   if (Number(booking.student_id) !== Number(accountId)) {
     throw new ApiError('这条订单不是你的，不能操作。');
@@ -134,16 +110,11 @@ async function bookingNames(db, booking) {
   const teacher = await db.get('SELECT name FROM teachers WHERE id = ?', [Number(booking.teacher_id)]);
   return {
     teacherName: teacher ? teacher.name : '',
-    // 老师端的一律显示「平台」：发单方真实信息不外露
+
     studentName: util.PLATFORM_NAME
   };
 }
 
-/*
- * 老师提交课次：
- *   kind = 试课 → 订单必须在「试课中」，而且只能提交一次；
- *   kind = 正式 → 订单必须在「主订单进行中」，上一次课确认完才能提交下一次。
- */
 async function submit(db, bookingId, role, accountId, kind, content) {
   if (role !== util.ROLE_TEACHER) throw new ApiError('只有老师能提交课次。', 403);
   const booking = await loadBooking(db, bookingId);
@@ -156,7 +127,7 @@ async function submit(db, bookingId, role, accountId, kind, content) {
   if (type === util.LESSON_FORMAL && booking.status !== util.STATUS_MAIN) {
     throw new ApiError('试课通过之后才能提交正式课次。');
   }
-  // 平台发过收款码的：确认收款之后才能开始试课（没走收款流程的不拦）
+
   if (type === util.LESSON_TRIAL) await payments.assertTrialUnlocked(db, booking);
 
   const pending = await db.get(
@@ -178,10 +149,7 @@ async function submit(db, bookingId, role, accountId, kind, content) {
     [Number(booking.id), util.LESSON_FORMAL]
   );
   const seq = type === util.LESSON_FORMAL ? Number(count.total) + 1 : 0;
-  /*
-   * 课时费：正式课＝订单价格快照全额；试课先按半价挂上（平台判定通过 / 不通过时
-   * 再改成「半价」或「全价」，见 trialResult）。价格是自由文本，取开头数字。
-   */
+
   const unit = util.priceValue(booking.price);
   const fee = type === util.LESSON_FORMAL ? unit : Math.round(unit / 2);
 
@@ -221,7 +189,6 @@ async function submit(db, bookingId, role, accountId, kind, content) {
   return { id: Number(result.lastId), seq, kind: type };
 }
 
-// 平台有异议后，老师改完重新提交（还在「待确认」，只改内容）
 async function resubmit(db, lessonId, role, accountId, content) {
   if (role !== util.ROLE_TEACHER) throw new ApiError('只有老师能重新提交课次。', 403);
   const lesson = await loadLesson(db, lessonId);
@@ -240,11 +207,6 @@ async function resubmit(db, lessonId, role, accountId, content) {
   return true;
 }
 
-/*
- * 老师撤回课次：只撤「待确认」的那条（平台还没确认、也还没计费）。
- * 撤回后这条记录删掉，订单留在原状态，老师可以重新提交。
- * 已确认 / 待支付 / 已支付的不让撤（钱已经定了），要收尾走「取消预约 / 结束订单」。
- */
 async function withdraw(db, lessonId, role, accountId) {
   if (role !== util.ROLE_TEACHER) throw new ApiError('只有老师能撤回课次。', 403);
   const lesson = await loadLesson(db, lessonId);
@@ -270,7 +232,6 @@ async function withdraw(db, lessonId, role, accountId) {
   return true;
 }
 
-// 平台确认本次（正式课）：课次「已确认」，计入已确认次数和待支付金额
 async function confirm(db, lessonId, role, accountId) {
   if (role !== util.ROLE_STUDENT) throw new ApiError('只有平台端能确认课次。', 403);
   const lesson = await loadLesson(db, lessonId);
@@ -293,9 +254,6 @@ async function confirm(db, lessonId, role, accountId) {
   return true;
 }
 
-/*
- * 平台有异议：填原因，课次退回「待确认」（本来就是待确认，只把原因存下来），通知老师改。
- */
 async function dispute(db, lessonId, role, accountId, reason) {
   if (role !== util.ROLE_STUDENT) throw new ApiError('只有平台端能提异议。', 403);
   const text = util.plain(reason);
@@ -321,11 +279,6 @@ async function dispute(db, lessonId, role, accountId, reason) {
   return true;
 }
 
-/*
- * 平台判定试课：通过 → 订单进主订单；不通过 → 订单结束。
- * 试课是要付费的：feeHalf = true 收半价、false 收全价（不传按半价，和提交时的暂定价一致）。
- * 不管通过还是不通过，这条试课费都记进待支付。
- */
 async function trialResult(db, lessonId, role, accountId, pass, feeHalf) {
   if (role !== util.ROLE_STUDENT) throw new ApiError('只有平台端能确认试课结果。', 403);
   const lesson = await loadLesson(db, lessonId);

@@ -17,7 +17,6 @@
 .star-on { color: #2FD3BE; }
 .review-input { height: 80px; margin-bottom: 8px; }
 
-/* 底部固定动作条 */
 .bottom-bar {
   position: fixed;
   left: 0; right: 0; bottom: 0;

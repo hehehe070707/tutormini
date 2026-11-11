@@ -1,22 +1,6 @@
-/*
- * 全局样式：配色走「纯白底 + 青绿渐变点缀」的简约路子（参考 BOSS 直聘那种清爽感），
- * 对应 Qt 版 resources/style.qss 的角色划分（主按钮 / 次要按钮 / 危险按钮 / 卡片 / 列表 / 状态色）。
- *
- * 色板（改色只改这几处，页面样式里引用同一套值；页面 wxss 因为样式隔离会各写一份）：
- *   青绿 #0FB5A6（主色，按下 #0A9C90，浅底 #E7F8F5，描边 #CFF0EA）
- *   渐变 linear-gradient(135deg, #38E1C6 0%, #0FB5A6 100%)（主按钮、选中态、标题小竖条等"点缀"）
- *   白   #FFFFFF（页面底 + 卡片底 —— 页面不出现深色底）
- *   浅灰 #F7F9FA（输入框 / 头像底）  描边 #ECEFF3  分隔线 #F2F4F7
- *   墨 #1F2328（主文字）  次级 #6B7280  更淡 #9CA3AF
- */
-
 page {
   background-color: #FFFFFF;
-  /*
-   * 左上角一抹淡绿点缀：从原来的浅底绿 (#E7F8F5) 向右下渐隐到透明，白底上像一层柔光。
-   * 范围卡死：横向最多半个屏宽、纵向最多四分之一屏高（50vw × 25vh），不往页面中间铺，
-   * 也不压到卡片、按钮和底部导航；改色只改这一处，页面里不要各写一份。
-   */
+
   background-image: radial-gradient(100% 100% at 0% 0%,
       #E7F8F5 0%,
       rgba(30, 174, 148, 0.56) 45%,
@@ -29,7 +13,6 @@ page {
   line-height: 1.5;
 }
 
-/* 主色渐变：哪里要"点缀"就用它（按钮 / 小竖条 / 选中下划线 / 徽章） */
 .grad {
   background-image: linear-gradient(135deg, #38E1C6 0%, #0FB5A6 100%);
 }
@@ -38,13 +21,10 @@ page {
   background-image: linear-gradient(135deg, #2FD3BE 0%, #0FB5A6 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  color: #0FB5A6;                  /* 老内核不支持渐变文字时的兜底色 */
+  color: #0FB5A6;
   -webkit-text-fill-color: transparent;
 }
 
-/* ---------- 按钮 ---------- */
-
-/* 主按钮：青绿渐变（唯一的"重色"，靠渐变而不是深色撑分量） */
 .btn {
   background-color: #0FB5A6;
   background-image: linear-gradient(135deg, #38E1C6 0%, #0FB5A6 100%);
@@ -69,7 +49,6 @@ page {
   box-shadow: none;
 }
 
-/* 次要按钮：细描边（返回、聊天、取消） */
 .btn-ghost {
   background-color: #FFFFFF;
   color: #0FB5A6;
@@ -84,7 +63,6 @@ page {
 
 .btn-ghost:active { background-color: #E7F8F5; border-color: #0FB5A6; }
 
-/* 危险按钮：砖红描边，用在拒绝、撤销、取消预约 */
 .btn-danger {
   background-color: #FFFFFF;
   color: #E5484D;
@@ -99,22 +77,18 @@ page {
 
 .btn-danger:active { background-color: #FFEFF0; }
 
-/* 列表行里的小按钮 */
 .btn-sm {
   font-size: 13px;
   line-height: 2.1;
   padding: 0 12px;
 }
 
-/* 去掉小程序 button 默认样式 */
 button {
   margin: 0;
   padding: 0;
   background: transparent;
 }
 button::after { border: none; }
-
-/* ---------- 容器 ---------- */
 
 .card {
   background-color: #FFFFFF;
@@ -129,7 +103,7 @@ button::after { border: none; }
   min-height: 100vh;
   padding: 12px;
   box-sizing: border-box;
-  padding-bottom: 84px;   /* 给底部导航留位置 */
+  padding-bottom: 84px;
 }
 
 .page-plain {
@@ -147,7 +121,6 @@ button::after { border: none; }
   position: relative;
 }
 
-/* 标题左边一小段渐变竖条：页面里唯一的彩色点缀 */
 .page-title::before {
   content: '';
   position: absolute;
@@ -165,10 +138,6 @@ button::after { border: none; }
   font-size: 13px;
 }
 
-/*
- * 列表分组分界线：老师接单页用它把"符合我的要求"和"不完全符合"两组分开。
- * 中间一条浅灰线 + 一句提示，不抢戏也不用深色。
- */
 .group-divider {
   display: flex;
   align-items: center;
@@ -195,8 +164,6 @@ button::after { border: none; }
 .grow { flex: 1; }
 .gap { height: 8px; }
 
-/* ---------- 表单 ---------- */
-
 .field {
   display: flex;
   align-items: center;
@@ -212,8 +179,8 @@ button::after { border: none; }
 
 .input {
   flex: 1;
-  height: 42px;          /* 小程序 input 是原生组件，默认高度只有 1.4rem：不给高度只给上下内边距会把文字挤掉一半 */
-  line-height: 40px;     /* 42px 减去上下两条边框，文字垂直居中 */
+  height: 42px;
+  line-height: 40px;
   border: 1px solid #ECEFF3;
   border-radius: 10px;
   padding: 0 12px;
@@ -235,7 +202,6 @@ button::after { border: none; }
   box-sizing: border-box;
 }
 
-/* 「📍定位」小按钮：跟 .input 一样高，贴在地址输入框右边 */
 .loc-btn {
   flex-shrink: 0;
   margin-left: 6px;
@@ -255,7 +221,7 @@ button::after { border: none; }
 
 .picker-value {
   flex: 1;
-  height: 42px;          /* 和 .input 一样高，一行表单里几个控件才对得齐 */
+  height: 42px;
   line-height: 40px;
   border: 1px solid #ECEFF3;
   border-radius: 10px;
@@ -265,8 +231,6 @@ button::after { border: none; }
   font-size: 14px;
   box-sizing: border-box;
 }
-
-/* ---------- 列表（对应 QTableWidget 的一行） ---------- */
 
 .list {
   background-color: #FFFFFF;
@@ -294,8 +258,6 @@ button::after { border: none; }
   line-height: 1.7;
 }
 
-/* ---------- 状态色 ---------- */
-
 .st-pending { color: #E08700; }
 .st-confirmed { color: #0A9C90; }
 .st-rejected { color: #E5484D; }
@@ -304,7 +266,6 @@ button::after { border: none; }
 .st-taken { color: #0A9C90; }
 .st-closed { color: #9CA3AF; }
 
-/* 未读标记 */
 .badge {
   background-color: #E5484D;
   color: #FFFFFF;
@@ -319,10 +280,6 @@ button::after { border: none; }
 
 .dot { color: #E5484D; }
 
-/*
- * 最小单位的待办红点：一条单子只要还挂着没处理的投递就带一个（带它的每一层页面都要有，
- * 见工作台 / 我发布的 / 单子管理 / 消息页）。数字只在汇总的地方出现，且按"单子数"算。
- */
 .red-dot {
   display: inline-block;
   width: 8px;
@@ -332,8 +289,6 @@ button::after { border: none; }
   margin: 0 5px 0 0;
   vertical-align: middle;
 }
-
-/* ---------- 页内弹层（对应 QDialog） ---------- */
 
 .mask {
   position: fixed;
@@ -386,8 +341,6 @@ button::after { border: none; }
   margin-left: 10px;
 }
 
-/* ---------- 登录页 ---------- */
-
 .login-title {
   font-size: 26px;
   font-weight: bold;
@@ -414,7 +367,6 @@ button::after { border: none; }
   letter-spacing: 0.5px;
 }
 
-/* 头像占位：浅灰底 + 青绿描边 */
 .avatar {
   width: 76px;
   height: 76px;
@@ -426,8 +378,6 @@ button::after { border: none; }
   font-size: 38px;
   box-sizing: border-box;
 }
-
-/* ---------- 聊天 ---------- */
 
 .bubble-wrap { display: flex; margin-bottom: 10px; }
 .bubble-wrap.mine { justify-content: flex-end; }

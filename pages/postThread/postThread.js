@@ -1,12 +1,3 @@
-/*
- * 单子卡片详情（老师端）：点消息页里的「我的单子」那张卡片进来，看这条单子走到哪一步了。
- *
- * 数据就是这条单子（messages.post_id）下发给这位老师的全部通知，按时间正序排，
- * 像一段聊天记录；上面一块是单号 + 科目 + 上课时间 + 当前状态。
- * 进这一页就算看过了：把这条单子的未读全部标已读，底部导航红点当场减掉。
- * 对应 Qt 版没有这个页（小程序特有的「投简历之后生成一张单子卡片」）。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 const util = require('../../utils/util.js');
@@ -79,11 +70,9 @@ Page({
       wx.setNavigationBarTitle({ title });
     }
 
-    // 先渲染再标已读：不出现"标已读 → 又刷新"的来回
     if (unread > 0) store.readMessageThread(postId, unread);
   },
 
-  // setData 前先比一遍：内容没变就不往渲染层传
   apply(patch) {
     const stamp = JSON.stringify(patch);
     if (stamp === this.stamp) return;
@@ -91,7 +80,6 @@ Page({
     this.setData(patch);
   },
 
-  // 通知里带合同链接的，点一下复制（和消息页那条通知一个用法）
   onTapMessage(event) {
     const url = util.plain(event.currentTarget.dataset.url);
     if (url === '') return;

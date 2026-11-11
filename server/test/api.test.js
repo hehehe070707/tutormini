@@ -1,10 +1,3 @@
-/*
- * 后端集成测试：模拟小程序端跑一遍完整业务流（注册登录 / 下单 / 接单 / 聊天 / 评价 / 令牌）。
- * 跑法：node server/test/api.test.js
- *
- * 用临时 SQLite 文件，不碰开发库 data/tutor.db。对应项目规则里那条"交付前自己模拟测试逻辑"。
- */
-
 const os = require('node:os');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -116,7 +109,7 @@ async function main() {
     console.log('\n[3] 旧流程下线 / 权限');
     const otherTeacher = await api('POST', '/api/auth/register', { body: { role: 'teacher', name: '李英语', password: 'abc123' } });
     ok('第二个老师账号注册成功', otherTeacher.code === 0 && otherTeacher.data.id > 0);
-    // 「学生直接约老师」「学生写评价」这两条老链路已删除：现在是平台发单、老师投递
+
     ok('学生直接约老师的接口已下线',
       (await api('POST', '/api/bookings', {
         token: studentToken, body: { teacherId, time: '2026-10-01 上午' }
@@ -167,11 +160,6 @@ async function main() {
     });
     ok('老师带简历投递成功', take.code === 0, take.message);
 
-    /*
-     * 老师端「我的单子」：投一次简历就在消息页多一张卡片（标题＝单号），
-     * 同一张单子的通知都归在这张卡片里，点开看这条单子的状态。
-     */
-    // 中介端也有卡片了（发一单就有一张），只是这时候还没人投递，卡片是空的
     const studentBoxesEarly = await api('GET', '/api/messages/boxes', { token: studentToken });
     ok('中介端也能拿自己的单子卡片', studentBoxesEarly.code === 0 && Array.isArray(studentBoxesEarly.data.list),
       JSON.stringify(studentBoxesEarly.data));
@@ -183,7 +171,7 @@ async function main() {
       !!myBox && /^\d{8}-\d+$/.test(myBox.code) && myBox.code === guestOpen.data.list[0].code,
       myBox && myBox.code);
     ok('卡片上有未读', !!myBox && myBox.unread > 0, myBox && String(myBox.unread));
-    // 消息页不再点进二级页：卡片自己就要带上这条单子的全部消息
+
     ok('卡片上直接带着这条单子的消息（不用点进去）',
       !!myBox && Array.isArray(myBox.list) && myBox.list.length > 0 &&
         myBox.list.every((m) => m.postId === postId) &&
@@ -201,7 +189,6 @@ async function main() {
     ok('标已读后卡片不再有未读',
       boxesAfterRead.data.list.find((b) => b.postId === postId).unread === 0);
 
-    // 一条单可以被多位老师投递：平台在「我发布的」里挑一位确认
     const takenAgain = await api('POST', '/api/posts/' + postId + '/take', {
       token: otherTeacher.data.token,
       body: { resume: '我是李英语老师，数学也能带。' }
@@ -241,7 +228,6 @@ async function main() {
     ok('确认后那条课变试课中', afterConfirm.data.list.some((b) => b.id === waiting.id && b.status === '试课中'),
       afterConfirm.data.list.map((b) => b.status));
 
-    // 平台选了别人：同一条单上另一位老师的投递变成「平台选了别人」
     const otherAfterConfirm = await api('GET', '/api/bookings/mine', { token: otherTeacher.data.token });
     const refusedInvite = otherAfterConfirm.data.list.find((b) => b.day === '2026-10-02 下午');
     ok('没被选上的投递变成已拒绝（平台选了别人）',
@@ -256,7 +242,6 @@ async function main() {
     const closeMine = await api('POST', '/api/posts/' + postId + '/close', { token: studentToken });
     ok('已成交的单不能再撤销', closeMine.code === 1, closeMine.message);
 
-    // 被接单之后取消的是「预约」：课取消掉，但单子还是开放的
     const teacherCancel = await api('POST', '/api/bookings/' + waiting.id + '/cancel', { token: teacherToken });
     ok('老师能取消自己接的课', teacherCancel.code === 0, teacherCancel.message);
 
@@ -274,7 +259,7 @@ async function main() {
     ok('重新开放的单别的老师还能接', retake.code === 0, retake.message);
 
     console.log('\n[4.1] 试课 → 主订单 → 课次 → 支付（新流程）');
-    // 换一位新学生走完整流程，别打乱前面小明的账
+
     const flowStudent = await api('POST', '/api/auth/register', { body: { role: 'student', name: '小刚', password: '123456' } });
     const flowToken = flowStudent.data.token;
 
@@ -305,7 +290,6 @@ async function main() {
     flowBooking = await flowOf(flowToken);
     ok('新流程：确认接单后订单进入试课中', flowBooking.status === '试课中', flowBooking.status);
 
-    // 试课：只有老师能提交，提交后是一条「待确认」的试课课次
     const studentSubmitTrial = await api('POST', '/api/bookings/' + flowBookingId + '/lessons', {
       token: flowToken, body: { kind: '试课', content: '' }
     });
@@ -327,7 +311,6 @@ async function main() {
     });
     ok('有课次待确认时不能再提交下一条', dupTrial.code === 1 && dupTrial.message.indexOf('还没确认') >= 0, dupTrial.message);
 
-    // 平台有异议 → 退回待确认并通知老师 → 老师改完重新提交
     const dispute = await api('POST', '/api/lessons/' + trialLessonId + '/dispute', {
       token: flowToken, body: { reason: '试课时间太短了' }
     });
@@ -352,9 +335,8 @@ async function main() {
         flowBooking.lessons[0].content.indexOf('补了 20 分钟') >= 0,
       JSON.stringify(flowBooking.lessons[0]));
 
-    // 平台通过试课 → 订单进主订单进行中
     const trialPass = await api('POST', '/api/lessons/' + trialLessonId + '/trial', {
-      token: flowToken, body: { pass: true, half: false }     // 试课费按全价
+      token: flowToken, body: { pass: true, half: false }
     });
     ok('平台判定试课通过', trialPass.code === 0, trialPass.message);
     flowBooking = await flowOf(flowToken);
@@ -366,7 +348,6 @@ async function main() {
         flowBooking.lessonStats.unpaidAmount === 100,
       JSON.stringify(flowBooking.lessonStats));
 
-    // 主订单：老师「完成本次」→ 平台「确认本次」→ 待支付 → 支付
     const formalSubmit = await api('POST', '/api/bookings/' + flowBookingId + '/lessons', {
       token: teacherToken, body: { kind: '正式', content: '第二次课讲了牛顿定律' }
     });
@@ -394,7 +375,6 @@ async function main() {
     ok('老师也能给主订单收尾', flowFinish.code === 0, flowFinish.message);
     ok('结束订单后状态是已结束', (await flowOf(flowToken)).status === '已结束');
 
-    // 试课不通过：订单直接结束
     const failPost = await api('POST', '/api/posts', {
       token: flowToken,
       body: { subject: '化学', time: '2026-10-21 晚上', price: '90 元/次', area: '北京海淀', lat: 39.98, lng: 116.30, note: '试课不通过' }
@@ -409,7 +389,7 @@ async function main() {
       token: teacherToken, body: { kind: '试课', content: '试课' }
     });
     const failResult = await api('POST', '/api/lessons/' + failTrial.data.id + '/trial', {
-      token: flowToken, body: { pass: false, half: true }     // 试课不通过，试课费按半价
+      token: flowToken, body: { pass: false, half: true }
     });
     ok('平台判定试课不通过', failResult.code === 0, failResult.message);
     const failedBooking = (await api('GET', '/api/bookings/mine', { token: flowToken }))
@@ -421,7 +401,7 @@ async function main() {
         failedBooking.lessonStats.unpaidAmount === 45,
       JSON.stringify(failedBooking.lessonStats));
     console.log('\n[4.2] 接单撞时间：只提醒，不拦投递');
-    // 先让小刚有一条占住时段的课，再来一条同一时间的新单
+
     const clash1 = await api('POST', '/api/posts', {
       token: flowToken,
       body: { subject: '语文', time: '2026-10-23 晚上', price: '80 元/次', area: '北京海淀' }
@@ -470,7 +450,6 @@ async function main() {
 
     console.log('\n[4.3] 双方取消：撤回投递 / 撤销发布 / 撤回课次 / 取消清课次');
 
-    // (1) 老师撤回投递：单子还在「招募中」，自己还能再投
     const wdPost = await api('POST', '/api/posts', {
       token: flowToken,
       body: { subject: '生物', time: '2026-11-01 下午', price: '110 元/次', area: '北京海淀' }
@@ -499,7 +478,6 @@ async function main() {
     });
     ok('撤回后老师还能再投同一条单', wdTake2.code === 0 && wdTake2.data.bookingId > 0, wdTake2.message);
 
-    // (2) 学生撤销发布：还在等的投递一起作废，不让老师干等
     ok('学生撤销发布成功',
       (await api('POST', '/api/posts/' + wdPost.data.id + '/close', { token: flowToken })).code === 0);
     ok('撤销发布后老师那条投递一起变已取消',
@@ -508,7 +486,6 @@ async function main() {
     ok('撤销后单子不再对老师开放',
       !(await api('GET', '/api/posts/open')).data.list.some((p) => p.id === wdPost.data.id));
 
-    // (3) 老师撤回还没被确认的课次：订单留在试课中，可以重新提交
     const lpPost = await api('POST', '/api/posts', {
       token: flowToken,
       body: { subject: '生物', time: '2026-11-02 下午', price: '110 元/次', area: '北京海淀' }
@@ -534,7 +511,6 @@ async function main() {
         token: teacherToken, body: { kind: '试课', content: '重新提交' }
       })).code === 0);
 
-    // (4) 取消预约：待确认的课次一并作废，需求重新开放
     ok('学生取消这条试课中的订单',
       (await api('POST', '/api/bookings/' + lpTake.data.bookingId + '/cancel', { token: flowToken })).code === 0);
     lpBooking = (await api('GET', '/api/bookings/mine', { token: flowToken }))
@@ -544,7 +520,6 @@ async function main() {
     ok('取消后需求重新开放给别的老师',
       (await api('GET', '/api/posts/open')).data.list.some((p) => p.id === lpPost.data.id));
 
-    // (5) 取消不免已经确认过的课时费：待支付照旧留着
     const unpaidPost = await api('POST', '/api/posts', {
       token: flowToken,
       body: { subject: '生物', time: '2026-11-03 下午', price: '110 元/次', area: '北京海淀' }
@@ -645,7 +620,7 @@ async function main() {
       JSON.stringify(idem.data));
 
     console.log('\n[7.1] 单子结构化要求 + 老师端匹配 + 双向筛选');
-    // 老师把自己资料补全（匹配要用：可教科目 / 学历 / 教龄 / 证书 / 性别 / 报价）
+
     await api('PUT', '/api/teachers/me/resume', {
       token: teacherToken,
       body: {
@@ -658,7 +633,6 @@ async function main() {
       body: { name: '王数学', subject: '数学', price: '150 元/小时', area: '北京海淀', lat: 39.98, lng: 116.30, gender: '男' }
     });
 
-    // 一条"老师完全符合"的单：初二数学 / 本科及以上 / 2 年以上 / 教师资格证 / 男老师 / 100-200
     const fitPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: {
@@ -691,7 +665,6 @@ async function main() {
       !!fitItem && fitItem.matchReasons.every((text) => text.indexOf('✅') === 0),
       JSON.stringify(fitItem && fitItem.matchReasons));
 
-    // 一条"硬条件不满足"的单：要女老师 + 硕士 + 5 年教龄
     const noPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: {
@@ -715,7 +688,6 @@ async function main() {
     ok('onlyMatch=0 时"显示全部单"能看到不符合的',
       allList.data.list.some((p) => p.id === noPost.data.id));
 
-    // 第一层筛选：年级 / 科目 / 性别要求 / 时薪区间 / 距离
     const byGrade = await api('GET', '/api/posts/open?lat=39.98&lng=116.30&km=45&onlyMatch=0&grade=初二', { token: teacherToken });
     ok('按年级筛选生效',
       byGrade.data.list.every((p) => p.grade.indexOf('初二') >= 0) &&
@@ -777,7 +749,6 @@ async function main() {
     ok('空原话不让解析（前端 bug 要看得见）',
       (await api('POST', '/api/agent/parse', { body: { text: '   ' } })).code === 1);
 
-    // 价格：家长给钱的方式不统一，统一折成"元/小时"
     const hourlyParse = await api('POST', '/api/agent/parse', { body: { text: '一次 400 元（一次两小时），要女老师' } });
     ok('按次给钱能折算时薪（400 元 / 2 小时 = 200）',
       hourlyParse.data.priceMin === 200 && hourlyParse.data.priceMax === 200,
@@ -796,7 +767,6 @@ async function main() {
         fuzzyParse.data.teachMode === '线下',
       JSON.stringify(fuzzyParse.data));
 
-    // 证书固定五档：教师资格证 / 普通话证书 / 四六级 / 雅思托福
     const cetParse = await api('POST', '/api/agent/parse', { body: { text: '要有英语四六级证书，能线下' } });
     ok('证书能解析出「四六级」', cetParse.data.certificate === '四六级', JSON.stringify(cetParse.data));
     const ieltsParse = await api('POST', '/api/agent/parse', { body: { text: '雅思托福优先' } });
@@ -814,7 +784,6 @@ async function main() {
       !!cetPost && cetPost.requirements.certificate === '四六级',
       JSON.stringify(cetPost && cetPost.requirements));
 
-    // 外部 Agent：起一个假的解析服务，把 AGENT_PARSE_URL 指过去
     const http = require('node:http');
     const fakeAgent = http.createServer((req, res) => {
       let raw = '';
@@ -823,7 +792,7 @@ async function main() {
         const text = JSON.parse(raw || '{}').text || '';
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({
-          // 带「脏」字的那条故意回一堆不规范写法，验证白名单兜得住
+
           requirements: text.indexOf('脏') >= 0
             ? { gender: '女性', education: '研究生', minYears: '三年', certificate: '奥数教练证', teachMode: '网课' }
             : { gender: '男', education: '博士', minYears: 5, certificate: '普通话证书', teachMode: '线上' },
@@ -846,7 +815,6 @@ async function main() {
         dirtyAgent.data.teachMode === '线上',
       JSON.stringify(dirtyAgent.data));
 
-    // 外部 Agent 挂了（端口 1 必连不上）：解析失败不能挡住发单
     config.agentParseUrl = 'http://127.0.0.1:1/parse';
     const broken = await api('POST', '/api/agent/parse', { body: { text: '女老师，硕士，能线下' } });
     ok('外部 Agent 挂了：解析失败也返回全「不限」+ 原话保留',
@@ -913,7 +881,6 @@ async function main() {
     ok('「不限」的字段不参与筛选：没写要求的单照样在',
       byReqMode.data.list.some((p) => p.requirements.teachMode === '不限'));
 
-    // 多选：'男,女' 就是两个都要
     const bothGender = await api('GET', '/api/posts/open' + filterBase + '&gender=男,女', { token: teacherToken });
     ok('单子要求能多选（gender=男,女 两种都留）',
       bothGender.data.list.some((p) => p.id === fitPost.data.id) &&
@@ -925,10 +892,6 @@ async function main() {
     ok('学历要求也能多选', bothEdu.data.list.some((p) => p.id === fitPost.data.id) &&
       bothEdu.data.list.some((p) => p.id === rawPost.data.id), JSON.stringify(bothEdu.data.list.length));
 
-    /*
-     * 另一向：老师勾"我自己的情况"，单子提的要求我都得满足。
-     * （不带 myXxx 的时候只看单子的要求 + onlyMatch，勾了才拿我的条件去卡）
-     */
     const myMale = await api('GET', '/api/posts/open' + filterBase + '&myGender=男', { token: teacherToken });
     ok('我勾"男老师"：要女老师的单被藏起来',
       myMale.data.list.some((p) => p.id === fitPost.data.id) &&
@@ -955,7 +918,7 @@ async function main() {
       !myOnline.data.list.some((p) => p.id === fitPost.data.id) &&
         myOnline.data.list.some((p) => p.id === rawPost.data.id),
       JSON.stringify(myOnline.data.list.map((p) => [p.id, p.requirements.teachMode])));
-    // 证书多了两档：四六级 / 雅思托福（老师简历里写了"英语六级"，所以这单他能投）
+
     const cetList = await api('GET', '/api/posts/open' + filterBase + '&certificate=四六级', { token: teacherToken });
     const cetItem = cetList.data.list.find((p) => p.id === cetLegacy.data.id);
     ok('按「四六级」筛：能筛到要四六级的单',
@@ -968,7 +931,6 @@ async function main() {
         !cetItem.matchReasons.some((text) => text.indexOf('❌') === 0 && text.indexOf('证书') >= 0),
       JSON.stringify(cetItem && [cetItem.matchLevel, cetItem.matchReasons]));
 
-    // 价格：只留一个"最低时薪"，按折算后的时薪（或价格文本）筛
     const byMinHourly = await api('GET', '/api/posts/open' + filterBase + '&minPrice=180', { token: teacherToken });
     ok('最低时薪筛：单子时薪下限 100（<180）藏起来，200 的显示',
       !byMinHourly.data.list.some((p) => p.id === fitPost.data.id) &&
@@ -979,7 +941,6 @@ async function main() {
       lowerHourly.data.list.some((p) => p.id === fitPost.data.id),
       JSON.stringify(lowerHourly.data.list.map((p) => [p.id, p.price])));
 
-    // 推荐排序：都满足时，家长明确提的要求越多越靠前
     const plainPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: { subject: '数学', time: '2026-12-06 晚上', price: '150 元/小时', area: '海淀 · 中关村' }
@@ -1132,7 +1093,6 @@ async function main() {
       payBooking.payStats.charge.status === '已退款' && payBooking.payStats.refunded === 500,
       JSON.stringify(payBooking.payStats));
 
-    // 上过一次课 → 按合同扣：只退一部分
     const partPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: { subject: '语文', time: '2026-12-02 晚上', price: '200 元/次', area: '北京海淀' }
@@ -1153,7 +1113,7 @@ async function main() {
       partRefund.code === 0 && partRefund.data.amount === 400, JSON.stringify(partRefund.data));
 
     console.log('\n[7.4] 中介工作台：单子卡片 + 修正（改状态 / 补录 / 作废）');
-    // ① 中介端也有单子卡片，并且带上投递情况
+
     const fixPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: { subject: '数学', time: '2026-12-20 晚上', price: '150 元/次', area: '北京海淀' }
@@ -1171,7 +1131,6 @@ async function main() {
     const fixBookingId = fixBox ? fixBox.bookingId : 0;
     ok('卡片上带着这条订单的 id（修正要用）', fixBookingId > 0, String(fixBookingId));
 
-    // ② 改单子状态
     const fixStatus = await api('POST', '/api/posts/' + fixPostId + '/correct', {
       token: studentToken, body: { action: 'status', status: '已成交', note: '家长线下定了' }
     });
@@ -1181,13 +1140,11 @@ async function main() {
     ok('改完之后「我发布的」里就是已成交',
       mineAfterFix.data.list.find((p) => p.id === fixPostId).status === '已成交');
 
-    // ③ 不是自己的单不能改
     ok('别人的单不能修正（403）',
       (await api('POST', '/api/posts/' + fixPostId + '/correct', {
         token: teacherToken, body: { action: 'status', status: '已撤销' }
       })).status === 403);
 
-    // ④ 改订单状态：已结束
     const fixBooking = await api('POST', '/api/bookings/' + fixBookingId + '/correct', {
       token: studentToken, body: { status: '已结束', note: '家长说不用上了', notify: true }
     });
@@ -1197,7 +1154,6 @@ async function main() {
     ok('订单状态一变，卡片的「状态这一栏」跟着变（不新增卡片）',
       (boxesAfterFix.data.list || []).find((b) => b.postId === fixPostId).statusText === '已结束');
 
-    // ⑤ 补录一条线下成交的订单
     const recordPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: { subject: '英语', time: '2026-12-21 晚上', price: '180 元/次', area: '北京海淀' }
@@ -1213,7 +1169,6 @@ async function main() {
       teacherBookingsAfter.data.list.some((b) => b.id === recordFix.data.bookingId &&
         b.status === '主订单进行中'));
 
-    // ⑥ 作废：软删（状态改掉，等确认的投递一起作废）
     const voidPost = await api('POST', '/api/posts', {
       token: studentToken,
       body: { subject: '化学', time: '2026-12-22 晚上', price: '160 元/次', area: '北京海淀' }
@@ -1232,7 +1187,6 @@ async function main() {
       !!voidBox && voidBox.statusText === '已关闭' && voidBox.pendingCount === 0,
       JSON.stringify(voidBox));
 
-    // ⑦ 每次修正都留一笔记录
     const fixLog = await api('GET', '/api/corrections?target=post&targetId=' + fixPostId,
       { token: studentToken });
     ok('修正有记录可查', fixLog.code === 0 && fixLog.data.list.length >= 1 &&
@@ -1253,7 +1207,6 @@ async function main() {
     });
     ok('学生资料保存成功', saveStudent.code === 0, saveStudent.message);
 
-    // 隐私：平台存下来的客户资料不能从老师那侧看到
     const teacherBookings = await api('GET', '/api/bookings/mine', { token: teacherToken });
     ok('老师拿到的订单里发单方只显示「平台」',
       teacherBookings.data.list.every((b) => b.studentName === '平台'),
@@ -1270,7 +1223,7 @@ async function main() {
 
     console.log('\n全部通过：' + passed + ' 项\n');
   } finally {
-    // 断开 keep-alive 连接，别让 server.close 一直等（不然脚本跑完不退出）
+
     if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
     await db.close();

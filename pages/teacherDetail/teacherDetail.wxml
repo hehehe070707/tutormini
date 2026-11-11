@@ -8,7 +8,7 @@
   <view class="empty" wx:if="{{notFound}}">找不到这位老师，可能资料已经删掉了。</view>
 
   <block wx:else>
-  <!-- 资料 -->
+
   <view class="card row">
     <view class="avatar">👤</view>
     <view class="grow info">
@@ -19,7 +19,6 @@
     </view>
   </view>
 
-  <!-- 完整简历（不设查看限制） -->
   <view class="page-title section">简历</view>
   <view class="card">
     <view class="r-row" wx:for="{{resumeRows}}" wx:key="label">
@@ -35,7 +34,6 @@
   </block>
 </view>
 
-<!-- 底部一个主动作：复制整段简历，平台直接转给客户 -->
 <view class="bottom-bar" wx:if="{{!notFound}}">
   <button class="btn" bindtap="onCopyResume">📋 复制简历</button>
 </view>

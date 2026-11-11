@@ -1,19 +1,3 @@
-/*
- * 中介工作台（小程序特有，Qt 版没有）：中介端底部第一格。
- *
- * 定位：这一页只装"今天要动手的事"，别的一概不放（家长不在小程序里，投递的简历是中介
- * 拿去微信发给家长的）：
- *   ① 发单入口：只有【批量发单】（pages/postBatch）—— 单条发布已经被它覆盖，不再单独开一个入口；
- *   ② 待办：待交付（复制简历合集发家长 →【已发家长】）
- *           待定老师（家长点头 →【确认接单】/【换一位老师】）
- *           待发合同（发合同 + 收款码）  待收款（老师已付款 → 确认到账）
- *   待办排序：按「这条单还挂着几个没处理的投递」从多到少（投的越多越靠前），
- *             不再按发布时间；只要还有没处理的投递，这条单一定在待办里。
- * 另外两块在各自的格子里，这一页不重复：单子档案在【单子】tab（pages/myPosts →
- * pages/postManage），消息页只服务老师（中介端不再挂消息入口）。
- * 「已发家长」是本机记忆（utils/store.js 的 deliveredMap），投递人数变了会自动回到待交付。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 const util = require('../../utils/util.js');
@@ -27,7 +11,7 @@ Page({
     tip: '',
     todo: [],
     todoEmpty: '',
-    todoPosts: 0       // 还有没处理投递的单子数（工作台那格的红点数字，按单子算不按投递算）
+    todoPosts: 0
   },
 
   onLoad() {
@@ -35,7 +19,6 @@ Page({
     this.seq = 0;
   },
 
-  // tab 页会被系统缓存：每次显示才订阅 + 刷数据 + 更新底部导航
   onShow() {
     store.on('postsChanged', this.refresh);
     store.on('bookingsChanged', this.refresh);
@@ -65,7 +48,7 @@ Page({
       store.setTodoPosts(0);
       return;
     }
-    // 老师端没有工作台（底部导航也不给）：万一手滑进来，给一句指路
+
     if (session.isTeacher()) {
       this.setData({
         guest: false, teacher: true, tip: '老师端没有工作台：接单、投递、我的课都在【接单】页。',
@@ -82,7 +65,7 @@ Page({
 
     const active = posts.filter((post) => post.status !== util.POST_CLOSED);
     const todo = [];
-    let todoPosts = 0;    // 还有没处理投递的单子数（同一单投 3 个老师也只算一条）
+    let todoPosts = 0;
     active.forEach((post) => {
       const invites = (post.invites || []).map((invite) => ({
         bookingId: invite.bookingId,
@@ -95,10 +78,7 @@ Page({
       }));
       const pending = invites.filter((invite) => invite.pending);
       if (pending.length > 0) todoPosts++;
-      /*
-       * 「已发家长」记在本机：发之前是【待交付】，发之后变成【待定老师】。
-       * 投递人数和当时记的不一样了（又有新简历）就自动回到【待交付】，不会漏。
-       */
+
       if ((Number(delivered[post.id]) || 0) > 0 && pending.length !== Number(delivered[post.id])) {
         delete delivered[post.id];
         deliveredChanged = true;
@@ -106,7 +86,6 @@ Page({
       const sent = (Number(delivered[post.id]) || 0) > 0;
       const codeText = post.code || ('#' + post.id);
 
-      // 只要还有没处理的投递，这条单一定在待办里（不看发布时间 / 单子状态）
       if (pending.length > 0 && !sent) {
         todo.push({
           kind: 'deliver',
@@ -138,13 +117,9 @@ Page({
       }
     });
 
-    /*
-     * 定了老师之后的钱：还没发合同 / 收款码 → 【待发合同】；老师点了「我已付款」→ 【待收款】。
-     * 课次确认那一套不在这里（家长不在小程序里，中介问完家长在单子管理页用【修正】改状态）。
-     */
     bookings.forEach((booking) => {
       if (!util.isActiveBooking(booking.status)) return;
-      if (booking.status === util.STATUS_PENDING) return;   // 还没定老师，在【待定老师】里
+      if (booking.status === util.STATUS_PENDING) return;
       const charge = (booking.payStats || {}).charge || null;
       const post = posts.find((item) => item.id === booking.postId) || {};
       const codeText = post.code || ('#' + booking.postId);
@@ -174,10 +149,7 @@ Page({
         });
       }
     });
-    /*
-     * 待办顺序：先按「这条单还挂着几个没处理的投递」从多到少（投的越多越靠前），
-     * 人数一样时再按 交付简历 → 定老师 → 发合同 → 收款，最后按单子 / 投递的先后稳定排。
-     */
+
     const weight = { deliver: 1, pick: 2, contract: 3, pay: 4 };
     todo.sort((a, b) => {
       const byCount = (Number(b.count) || 0) - (Number(a.count) || 0);
@@ -190,7 +162,7 @@ Page({
     if (deliveredChanged) store.saveDeliveredMap(delivered);
     if (seq !== this.seq) return;
 
-    store.setTodoPosts(todoPosts);      // 底部导航【工作台】那格的红点当场对上
+    store.setTodoPosts(todoPosts);
     this.setData({
       guest: false, teacher: false, tip: '',
       todo,
@@ -201,9 +173,6 @@ Page({
     });
   },
 
-  // ---------- 发单入口 ----------
-
-  // ＋批量发单：唯一的发单入口（单条发布已经被批量发单覆盖）
   onBatch() {
     if (!auth.requireRole('student', 'student')) return;
     wx.navigateTo({ url: '/pages/postBatch/postBatch' });
@@ -213,16 +182,12 @@ Page({
     auth.requireRole('', '');
   },
 
-  // ---------- 待办上的动作 ----------
-
-  // 待办①：把简历合集复制走（粘贴到微信发给家长）
   onCopyDeliver(event) {
     const item = this.data.todo[Number(event.currentTarget.dataset.index)];
     if (!item) return;
     postTexts.copyText(item.bundle, '简历合集已复制，去微信发给家长');
   },
 
-  // 待办①：发完家长，记一笔 —— 这条单就从【待交付】挪到【待定老师】
   onMarkDelivered(event) {
     const { postId, count } = event.currentTarget.dataset;
     if (!(Number(postId) > 0)) return;
@@ -232,7 +197,6 @@ Page({
     this.refresh();
   },
 
-  // 待办②：先看看老师投的简历
   onShowResume(event) {
     const { name, resume } = event.currentTarget.dataset;
     wx.showModal({
@@ -242,7 +206,6 @@ Page({
     });
   },
 
-  // 待办②：家长点头 → 确认接单（单子转已成交，订单进试课中）
   onConfirmTake(event) {
     if (!auth.requireRole('student', 'student')) return;
     const { bookingId, name, timeText } = event.currentTarget.dataset;
@@ -264,7 +227,6 @@ Page({
     });
   },
 
-  // 待办②：不选这位老师：撤掉这条投递，单子继续招募
   onRefuseTake(event) {
     if (!auth.requireRole('student', 'student')) return;
     const { bookingId, name } = event.currentTarget.dataset;
@@ -286,7 +248,6 @@ Page({
     });
   },
 
-  // 待办③：发合同 + 收款码（两步输入：先金额，再链接，都能留空）
   onSendContract(event) {
     if (!auth.requireRole('student', 'student')) return;
     const id = Number(event.currentTarget.dataset.bookingId);
@@ -319,7 +280,6 @@ Page({
     });
   },
 
-  // 待办④：核对到账 → 确认收款（确认后老师才能开始试课）
   onConfirmPay(event) {
     if (!auth.requireRole('student', 'student')) return;
     const { chargeId, amount, teacherName } = event.currentTarget.dataset;

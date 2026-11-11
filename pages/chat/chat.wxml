@@ -1,5 +1,5 @@
 <view class="chat-page">
-  <!-- 顶部一句话说明：这是官方助手 -->
+
   <view class="chat-card" wx:if="{{navTitle}}">
     <view class="grow">
       <view class="cc-role">官方助手</view>

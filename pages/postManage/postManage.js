@@ -1,17 +1,3 @@
-/*
- * 单子管理（三级页）：中介从【单子】那格（pages/myPosts）点一条单进来，这一页管这一条单的档案。
- *
- * 一页四块（这一页只"看档案 + 兜底改"，动手的事在【工作台】待办里）：
- *   ① 这条单的全部属性（单号 / 科目年级 / 状态 / 时间 / 价格 / 位置 / 说明 / 要求 / 家长原话）
- *      + 复制单号 / 需求 / 简历合集 + 撤销（招募中才给）
- *   ② 收到的投递：每位老师一份（看简历 / 点名字看老师资料），不回绝也不定人
- *   ③ 合同收款：这条订单收到多少钱、合同链接（可复制）
- *   ④ 修正：改单子状态 / 改订单状态 / 补录线下成交的订单 / 作废（软删）/ 修正记录
- *
- * 确认接单 / 换一位老师 / 发合同 / 确认收款这些日常动作只放在工作台待办里，避免两处重复。
- * 对应 Qt 版里"我发布的 + 订单处理"那一堆按钮，小程序这边收成一条单子一页。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 const util = require('../../utils/util.js');
@@ -31,10 +17,10 @@ Page({
     missing: '',
     post: null,
     invites: [],
-    pendingCount: 0,   // 还挂着没处理的投递条数（这一页的红点看它）
+    pendingCount: 0,
     bookings: [],
     canClose: false,
-    // 修正：能改成哪几个状态（受控，和后端 correct.js 一致）
+
     fixPostOptions: ['招募中', '已成交', '已关闭'],
     fixPostIndex: 0,
     fixBookingOptions: ['待确认', '试课中', '主订单进行中', '已结束', '已取消'],
@@ -155,7 +141,6 @@ Page({
     });
   },
 
-  // 补录订单能挑的老师：投过这条单的都算（按 id 去重）
   fixTeacherOptions(invites) {
     const seen = {};
     const list = [];
@@ -172,8 +157,6 @@ Page({
     const note = util.plain(log.note) === '' ? '' : '（' + log.note + '）';
     return log.createdAt + '　' + log.fromStatus + ' → ' + log.toStatus + note;
   },
-
-  // ---------- ① 复制 / 撤销 ----------
 
   onCopyCode() {
     const post = this.data.post;
@@ -211,8 +194,6 @@ Page({
     });
   },
 
-  // ---------- ② 投递：看简历 / 看老师（定人、回绝都在工作台待办里做）----------
-
   onShowResume(event) {
     const { name, resume } = event.currentTarget.dataset;
     wx.showModal({
@@ -222,14 +203,11 @@ Page({
     });
   },
 
-  // 点老师名字 → 老师资料页（二级页里再看一层）
   onOpenTeacher(event) {
     const teacherId = Number(event.currentTarget.dataset.teacherId);
     if (!(teacherId > 0)) return;
     wx.navigateTo({ url: '/pages/teacherDetail/teacherDetail?id=' + teacherId });
   },
-
-  // ---------- ③ 合同收款（这里只看，发合同 / 确认收款在工作台待办里）----------
 
   onCopyContract(event) {
     const url = event.currentTarget.dataset.url;
@@ -239,8 +217,6 @@ Page({
       success: () => wx.showToast({ title: '合同链接已复制', icon: 'none' })
     });
   },
-
-  // ---------- ④ 修正 ----------
 
   onFixPostPick(event) {
     this.setData({ fixPostIndex: Number(event.detail.value) || 0 });

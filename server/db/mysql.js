@@ -1,10 +1,3 @@
-/*
- * MySQL 驱动（上线用）：本地开发装不上 npm 包也没关系 —— 只有 DB_DRIVER=mysql 时才会走到这里。
- * 需要先 npm i mysql2（云服务器上装）。
- *
- * 和 SQLite 驱动暴露同一套接口（all/get/run/exec/transaction），业务层代码一行都不用改。
- */
-
 function open(config) {
   let mysql;
   try {
@@ -55,7 +48,6 @@ function open(config) {
       };
     },
 
-    // 事务用一条独占连接，保证接单/下单这种多步写入不会互相打架
     async transaction(fn) {
       const conn = await pool.getConnection();
       const tx = {
@@ -85,7 +77,7 @@ function open(config) {
         await conn.commit();
         return out;
       } catch (e) {
-        try { await conn.rollback(); } catch (ignored) { /* 回滚失败按原错误抛 */ }
+        try { await conn.rollback(); } catch (ignored) {  }
         throw e;
       } finally {
         conn.release();
@@ -100,7 +92,6 @@ function open(config) {
   return api;
 }
 
-// 首次部署：库还不存在时先建库（连的时候先不指定 database）
 async function bootstrap(config) {
   let mysql;
   try {

@@ -1,8 +1,3 @@
-/*
- * 业务错误：数据层校验失败时抛出，HTTP 层统一转成 { code: 1, message } ——
- * message 就是小程序端原来的 store.lastError 文案，前端弹窗文案完全不用改。
- */
-
 class ApiError extends Error {
   constructor(message, status) {
     super(message);

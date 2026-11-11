@@ -1,10 +1,7 @@
-/* 单子：按状态分组的一串单子，点一条进「单子管理」（动手的事在【工作台】待办里） */
-
 .section { margin: 14px 0 8px; }
 .mp-go { color: #0A9C90; font-size: 13px; flex-shrink: 0; margin-left: 8px; }
 .guest-tip { background: #F3FBFA; border-color: #CFF0EA; }
 
-/* 行内排版：第一行 科目年级 + 单号 + 红点；下面两行灰字，标题行不换行时也整齐 */
 .mp-line { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 2px; }
 .mp-subject { font-size: 15px; font-weight: bold; color: #1F2328; }
 .mp-code { font-size: 12px; color: #9CA3AF; margin-left: 6px; }

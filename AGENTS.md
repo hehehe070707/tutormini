@@ -1,69 +1,62 @@
-# AGENTS.md 项目规则｜TutorMini 微信小程序版（D:\LZM\TutorMini）
+# TutorMini 开发说明
 
-## 对话规则（节约Token）
-1. 输出尽量精简，去掉开场白和冗余描述，直接给核心内容。
-2. 用户不是专业开发，描述可能有误差：优先理解真实意图，别纠结字面；有歧义只问一句话。
+## 项目
 
-## 项目开发流程规则
-1. 开发任务先输出简短方案，确认后再写代码。
-2. 交付前自己模拟测试逻辑，尽量一次跑通：
-   - 数据层（utils/）改动：用 Node 模拟 `wx.getStorageSync/setStorageSync` 跑一遍注册登录、下单、评价、发单选单、聊天、令牌等规则。
-   - 页面改动：检查 JS 语法（`node --check`）、页面四件套是否齐全、`usingComponents` 是否声明、跳转路径是否存在、WXML 标签是否配平、`wx:for` 是否带 `wx:key`。
-3. 每次修改后**使用 git 保存**（`git add` + `git commit`），但**不要自动推送到远端**；只有用户明确要求上传或推送时才执行 `git push`。
+TutorMini 是原生微信小程序加 Node.js 后端的家教供需平台。
 
-## 代码安全约束
-1. 不擅自删除文件；要删必须先问。
-2. 新增/修改保持现有风格：与 Qt 原版一一对应的命名、中文注释说明“对应 Qt 的哪个类/函数”。
-3. `D:\qt\TutorFinal`（Qt 原版）只读参考，任何情况下不要改动它。
+家长发布需求，老师投递简历，家长确认后进入试课和正式课流程。发单支持从家长原话中提取结构化要求。
 
-## 本工程要点（避免重复踩坑）
-- 架构：`utils/store.js` = Qt 版 databasemanager.cpp（本地缓存版数据层）、`utils/session.js` = session.h、`utils/util.js` = 日期/价格/SHA-256；页面 `pages/*` 与 Qt 的 pages 一一对应。
-- 数据层约定：接口返回 bool 或 id，**失败原因读 `store.lastError`**；返回 id 的接口失败必须返回 -1，不要返回 false。
-- 数据落地：本地缓存 key `tutor_db_v1`（7 张"表" + 自增 id）、登录令牌 key `session_token`（令牌原文在缓存，库里只有 SHA-256 摘要，有效期 90 天）。
-- 密码一律存 SHA-256 摘要（`utils/util.js` 自己实现），不要改成明文或换个简单哈希。
-- 底部导航是系统**自定义 tabBar**（`custom-tab-bar/`），切 Tab 必须用 `wx.switchTab`，不能再用 `wx.reLaunch`：tab 页会被缓存常驻，切页才不会卡。原生 tabBar 的 `list` 最多 5 项，现在只用了 4 项（`pages/post` 学生=发单 / 老师=接单，`pages/course` 只服务学生「我的课程」，另有 消息 / 我的）。
-- 页面刷数据**只放在 `onShow`**（`onLoad` 不要刷，否则首屏要跑两遍 + 两次 setData）；数据订阅在 `onShow` 注册、`onHide` 注销；`setData` 前先判断内容有没有变（跨渲染层传数据最贵）。聊天页不要出现“标已读 → 发信号 → 又刷新”的来回。
-- **配色走「纯白底 + 青绿渐变点缀」**（简约高级那一路，参考 BOSS 直聘）：页面底和卡片底都是白色，**页面上不出现深色底**；
-  主色青绿 `#0FB5A6`、按下 `#0A9C90`、浅底 `#E7F8F5`、描边 `#CFF0EA`，渐变统一用
-  `linear-gradient(135deg, #38E1C6 0%, #0FB5A6 100%)`（主按钮 / 标题左边小竖条 / tab 选中下划线这些"点缀"用）；
-  文字 `#1F2328` / 次级 `#6B7280` / 更淡 `#9CA3AF`，描边 `#ECEFF3`，分隔线 `#F2F4F7`，
-  状态色 `st-*`（橙 `#E08700` / 青绿 `#0A9C90` / 红 `#E5484D` / 灰 `#9CA3AF`）。
-  页面里不要再写新的色值；自定义组件与页面样式隔离，组件要用的类在组件自己的 wxss 里定义一份（`custom-tab-bar/index.wxss` 就是这么来的）。
-  导航栏也是白底黑字（`app.json` 的 `navigationBarBackgroundColor: #FFFFFF` + `navigationBarTextStyle: black`）。
-- 表格类界面用列表卡片实现；弹窗用 `wx.showModal` 或页内 `.mask + .dialog` 弹层。
-- 文案和业务规则（价格自由文本与快照、时段双维冲突、订单状态、评价一条+回复一次、未读红点、账号隔离）与 Qt 版保持一致，改动前先对照原版。
-- **访客模式（小程序特有，Qt 版没有）**：入口是第一页 `pages/post/post`（学生发的单都能随便看），打开小程序不进登录页；未登录时底部导航是 发单 / 我的。只有发布需求、接单、聊天、评价这些动作才弹身份确认——统一走 `utils/auth.js` 的 `requireRole(role, intent)`：没登录就跳 `pages/login/login?intent=...`，登录完 `navigateBack` 回到原页面继续；身份不符（老师账号去发单 / 学生账号去接单）会问一句要不要切身份（`?force=1` 才能跳过“已登录直接返回”）。
-- **单边发单 + 投递简历 + 学生确认（2026-09 改）**：只有学生（家长）能发布需求，只有老师能接单；老师不能发单、学生不能接单（后端 `server/http/handlers.js` + `server/domain/posts.js` 都挡）。流程是：学生发单 → 老师点【投递简历】写一份自我介绍发过去（**不能一键接单**，不带简历后端直接报错；课先挂「待确认」、简历存在 `bookings.resume`，单子被占住）→ **家长确认才算接单成功**（订单进「试课中」）；家长点「换一位老师」＝这条课作废、单子回到「招募中」。老师投递在 `pages/post/post` 上半部分，进行中的课在同页下半部分。
-- **试课 → 主订单 → 课次（2026-10 改）**：家长确认接单后订单进「试课中」；老师点【提交试课完成】生成一条「试课」课次，家长点通过 → 订单「主订单进行中」，点不通过 → 订单「已结束」。**试课是要付费的**：家长判定通过 / 不通过时选「试课费按半价（订单价格的一半，四舍五入）还是全价」，金额存在 `lessons.fee`（正式课 = 订单价格全额），通过不通过都计入待支付。主订单里每次上课老师点【完成本次】生成一条正式课次（待确认），家长【确认本次】→ 课次「已确认」、计入已确认次数和待支付金额；家长【有异议】填原因 → 课次退回「待确认」并通知老师改完重提。课次状态只有 待确认/已确认/待支付/已支付（`server/domain/lessons.js`、`bookings.lessons` / `booking.lessonStats`）。订单只有三种进行状态：试课中 / 主订单进行中 / 已结束，取消和没选上仍走 `已取消`/`已拒绝` 进历史。支付功能后面接，`POST /api/lessons/:id/pay` 目前只改状态。
-- **聊天限条数**：两人之间还没有「确认接单」的订单时（订单为 试课中/主订单进行中即解锁），未成交时是**「轮流一条」**（最后一条是自己发的就不能再发，等对方回复，`server/domain/chats.js` 的 `quota` / `TIP_WAIT_REPLY`），确认接单后不限；聊天页顶部会提示。老师 ↔ 官方助手（Agent）那条通道不受限制。
-- **中介端模块划分（2026-10-10 改，一个功能只占一个地方）**：底部导航 **工作台 / 单子 / 我的** 三格 ——
-  【工作台】`pages/workbench` 只装"今天要动手的事"：顶上唯一的发单入口【＋ 批量发单】（`pages/postBatch`，原来的【＋ 发布需求】和 `globalData.publishNow` 那条链路已删）+ 待办（待交付 / 待定老师 / 待发合同 / 待收款，动作按钮只在这一页）；
-  【单子】`pages/myPosts` 是 tabBar 第二格，只"查"：按 招募中 / 已成交 / 已关闭 分组列出全部单子，点一条进三级页 `pages/postManage`（档案 + 投递名单 + 合同收款 + 修正 + 撤销，**确认接单 / 换一位 / 发合同 / 确认收款这些日常按钮已经从这里撤掉**，那些只属于工作台待办）；
-  【我的】`pages/profile` 只管账号资料 + 两行统计 + 退出登录（原来的"订单历史 / 发单历史 + 已隐藏"整块已删，`utils/store.js` 的 `hiddenHistory` 也一起下线）。
-  中介端**不再有消息页**（单子状态在【单子】里就能看全，不给第二份通知）；消息页只服务老师（`custom-tab-bar` 里老师那格）。
-- **红点规则（2026-10-10 改）**：最小单位＝一条单子；一条单只要还挂着**没处理的投递**（`bookings.status = 待确认`）就在它出现的每一层带红点 —— 底部导航【工作台】格、工作台【待办】标题（数字＝**单子数**，同一条单投 3 位老师也只算 1）、待办卡片、`pages/myPosts` 每行、`pages/postManage`。数字只在汇总处出现，一律按单子数算不按投递条数。后端 `GET /me/unread` 多下发 `todoPosts`（`server/domain/bookings.js` 的 `pendingInvitePostCount`），`utils/store.js` 里 `setTodoPosts` / `todoPostCountCached` 给底部导航用。**待办排序**：按这条单还等几个投递从多到少，不再按发布时间。
-- **投递又撤回不留痕迹（2026-10-10 改）**：`bookings` 那侧 `cancelBooking` 里 `isPendingInvite` 的两条路（老师撤回投递 / 平台取消某条待确认投递）既不写新通知，也把这次投递已经写下的两条通知删掉 —— 靠 `messages.booking_id`（`notify.addMessage` 第 7 个参数、`notify.removeByBooking`）。投递通知以外，确认接单 / 没选上 / 合同 / 收款 / 撤销需求 / 课次 / 结束订单照旧记录。
+## 运行
 
-## 命令输出限制
-- PowerShell 环境下没有 `head`，未知大小的输出用 `Select-Object -First N` 截断。
-- 禁止不加限制地运行会输出大量内容的命令。
-- 根目录那几个 `.cmd` 必须**纯 ASCII**（注释里也不行）：cmd.exe 在 `chcp` 之前按 ANSI 读文件，注释里混中文会把解析带歪，表现为莫名执行半行文本。中文提示统一由调用的 `.ps1` 用 UTF-8 打印；`tools/*.ps1` 必须存成 UTF-8 带 BOM（PowerShell 5.1 不带 BOM 会按 ANSI 解码）。
-- 后端地址三层：`utils/config.js` 里 `DEV_BASES[0]` 本机（模拟器）、`TUNNEL_BASE` 穿透地址（由「穿透后端.cmd」自动改写那一行，别动变量名和格式）、`DEV_BASES[1]` 电脑局域网 IP。**后两条现在都自动维护**：`DEV_BASES[1]` 由「启动后端.cmd」调用 `tools/sync-lan-ip.ps1` 按当前网卡自动改写，`TUNNEL_BASE` 由「启动后端.cmd」后台调 `tools/tunnel-bg.ps1`（已在跑就跳过）或「穿透后端.cmd」改写 —— 三个脚本都靠变量名和 `DEV_BASES` / `TUNNEL_BASE` 的写法定位，别改格式。`apiBases()` 的尝试顺序是 本机 → 穿透 → 局域网（最后兜底，校园网隔离时会干等 15 秒超时）。「停止后端.cmd」会把后端和隧道一起停掉。改地址前先跑「查看本机IP.cmd」核对。
+```powershell
+cd server
+node server.js
+```
 
-## 改动日志（changelog）
+需要 Node.js 22.5 或更高版本。Windows 也可以双击项目根目录的 `启动后端.cmd`。
 
-- 每次改完代码，**先**往 `changelog/CHANGELOG.md` 末尾追加一条改动记录，再结束任务；只追加，不覆盖旧内容。
-- 文件夹或文件不存在就先创建：`changelog/` 目录、`changelog/CHANGELOG.md`（首行标题 `# 改动日志`）。
-- 每条记录格式固定如下，正文 100~400 字，按改动的内容多少来判断字数**必须写清楚涉及的文件夹名称**，不能只写文件名：
+开发时在微信开发者工具中导入项目根目录，填写自己的 AppID，并关闭合法域名校验。
 
-  ```
-  ## YYYY-MM-DD HH:mm
+## 测试
 
-  - 改动文件夹：
-  - 改动文件：
-  - 改了什么：
-  - 为什么改：
-  - 交互逻辑变化：
-  ```
+```powershell
+node server/test/api.test.js
+node tools/simulate.js
+```
 
-- 「交互逻辑变化」要写清楚用户操作前后的不同（点击哪里、看到什么、顺序有没有变）。
+页面脚本修改后至少执行：
+
+```powershell
+node --check pages/页面目录/页面.js
+```
+
+检查页面 `.js`、`.json`、`.wxml`、`.wxss` 齐全，跳转路径存在，`wx:for` 使用 `wx:key`。
+
+## 目录
+
+- `pages/`：小程序页面
+- `utils/`：网络请求、登录态、定位和业务接口
+- `custom-tab-bar/`：底部导航
+- `server/`：Node.js 后端、数据库和接口测试
+- `tools/`：局域网地址、隧道、Agent 令牌和模拟测试
+- `legacy/`：旧本地缓存实现，仅作参考
+
+## 开发约定
+
+- 业务数据以后端为准，小程序本地只保存 `session_token`。
+- 密码只保存 SHA-256 摘要。
+- 接口失败原因读取 `store.lastError`，返回 id 的接口失败返回 `-1`。
+- 页面数据在 `onShow` 刷新，事件订阅在 `onShow` 注册、`onHide` 注销。
+- 切换底部 Tab 使用 `wx.switchTab`。
+- 保持白色背景和青绿色点缀的现有视觉风格。
+- 注释只写无法从代码直接看出的约束，不复述代码，不写教程。
+- 不提交数据库、日志、`.env`、`project.private.config.json` 或密钥。
+- `tools/*.ps1` 必须保存为 UTF-8 BOM，根目录 `.cmd` 必须保持纯 ASCII。
+- `utils/config.js` 中的 `DEV_BASES` 和 `TUNNEL_BASE` 会被脚本改写，不要改变变量名和值格式。
+- 不删除文件，不修改用户已有的无关改动。
+
+## 提交
+
+重要改动同步更新 `changelog/CHANGELOG.md`。
+
+完成检查后使用 `git add` 和 `git commit` 保存。未得到明确要求时不要执行 `git push`。

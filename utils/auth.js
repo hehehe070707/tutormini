@@ -1,12 +1,3 @@
-/*
- * 权限辅助（小程序特有）：浏览不需要登录，只有发布 / 接单（投递简历）/ 确认接单 /
- * 官方助手会话这些真需要身份的动作才让用户选账号。
- *
- * 用法： if (!auth.requireRole('student', 'student')) return;
- * 没登录 → 跳登录页选身份，登录完自动回到当前页继续做；
- * 登错身份（比如老师账号去预约）→ 问一句要不要切身份。
- */
-
 const session = require('./session.js');
 
 function toLogin(intent, force) {
@@ -28,7 +19,6 @@ function switchRole(role) {
   });
 }
 
-// role 传 '' 表示任意身份都行；intent 只是给登录页一句提示
 function requireRole(role, intent) {
   if (session.isLoggedIn()) {
     if (role === 'student' && !session.isStudent()) {

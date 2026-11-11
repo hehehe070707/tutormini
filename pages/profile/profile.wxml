@@ -3,7 +3,6 @@
   <view class="page-title center">{{nameText}}</view>
   <view class="muted center">{{roleName}}</view>
 
-  <!-- 访客：说明为什么需要身份，并给登录入口 -->
   <view class="card guest-tip" wx:if="{{role === 'guest'}}">
     <view class="muted">微信里打开就能直接看大家发的单。只有下面这些动作才需要先选一个账号：发布需求、投递简历、确认接单。</view>
     <view class="gap"></view>
@@ -14,7 +13,6 @@
     </view>
   </view>
 
-  <!-- 学生资料 -->
   <view class="card" wx:if="{{role === 'student'}}">
     <view class="field">
       <view class="field-label">称呼</view>
@@ -39,7 +37,6 @@
     <button class="btn" bindtap="onSaveProfile">保存资料</button>
   </view>
 
-  <!-- 老师资料 -->
   <view class="card" wx:if="{{role === 'teacher'}}">
     <view class="field">
       <view class="field-label">姓名</view>
@@ -70,7 +67,7 @@
       <view class="field-label">位置</view>
       <input class="input" placeholder="例如：海淀区 · 中关村（学生可按位置搜到你）" value="{{area}}"
              data-field="area" bindinput="onInput" />
-      <!-- 小程序特有的定位入口：不想手打就弹微信选点地图，用当前位置或改成别的地点 -->
+
       <button class="loc-btn" bindtap="onChooseArea">📍定位</button>
     </view>
     <view class="field">

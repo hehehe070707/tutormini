@@ -1,23 +1,9 @@
-/*
- * 【已停用的旧实现，留作对照，可整个 legacy/ 目录删掉】
- * 这是改造前的数据层：小程序版的 DatabaseManager，所有业务数据都存在本机 wx.storage 里。
- * 现在业务数据在后端（server/），页面用的是 utils/store.js（API 客户端）。
- *
- * 数据层：小程序版的 DatabaseManager。
- * 对应 Qt 版 data/databasemanager.cpp —— 原来读写 SQLite，这里读写 wx 本地缓存
- * （一个 key 里放 7 张"表"数组 + 自增 id），对外接口名、校验规则、消息通知、
- * 信号（xxxChanged）都跟 C++ 版一一对应。
- *
- * 用法和 C++ 一致：函数返回 bool / id，失败原因放在 store.lastError 里。
- * 页面读数据用 store.xxxChanged(fn) 订阅，等价于 Qt 的 connect(...signal...)。
- */
-
 const util = require('../utils/util.js');
 const session = require('../utils/session.js');
 const location = require('../utils/location.js');
 
 const DB_KEY = 'tutor_db_v1';
-const NEARBY_KEY = 'nearby_km_v1';   // 半径选过就记住，下次打开还是这个值
+const NEARBY_KEY = 'nearby_km_v1';
 const TABLES = ['teachers', 'students', 'bookings', 'messages', 'reviews', 'posts', 'chats', 'sessions'];
 const EVENTS = ['teachersChanged', 'bookingsChanged', 'messagesChanged', 'studentsChanged',
                 'reviewsChanged', 'postsChanged', 'chatsChanged'];
@@ -46,7 +32,7 @@ function load() {
     stored = null;
   }
   db = stored && typeof stored === 'object' ? stored : emptyDb();
-  // 老版本/半截数据兜底：缺哪张表补哪张
+
   TABLES.forEach((table) => {
     if (!Array.isArray(db[table])) db[table] = [];
   });
@@ -73,21 +59,20 @@ function nextId(table) {
   return data.seq[table];
 }
 
-// ---------- 信号（等价于 Qt 的 xxxChanged()）----------
 function emit(eventName) {
   const list = listeners[eventName] || [];
   list.slice().forEach((fn) => {
     try {
       fn();
     } catch (e) {
-      // 页面回调出错不影响数据层，跟 Qt 里信号槽互不干扰一个意思
+
     }
   });
 }
 
 function on(eventName, fn) {
   if (!listeners[eventName]) listeners[eventName] = [];
-  // 同一个回调重复订阅只留一份（页面 onShow 会重新订阅）
+
   if (listeners[eventName].indexOf(fn) < 0) listeners[eventName].push(fn);
 }
 
@@ -111,16 +96,10 @@ function findStudent(id) {
   return load().students.find((s) => s.id === Number(id)) || null;
 }
 
-// ==================== 附近筛选（小程序特有）====================
-// 对应说明：Qt 版没有"只看多远以内"，这里给列表页加一层距离过滤。
-// 浏览者的定位存在 utils/location.js（本地缓存 my_location_v1），这里只管：
-//   用哪个定位（viewer）、多远以内（nearbyKm）、要不要看全部（showAll）。
-// showAll 不写缓存：下次进来默认还是"只看附近"，免得"看全部"变成长期状态把限制绕过去。
-
 let viewer = null;
 let nearbyKm = util.NEARBY_KM;
 let showAll = false;
-let lastHidden = 0;      // 上一次列表筛掉了多少条（页面提示用）
+let lastHidden = 0;
 
 function loadNearbyKm() {
   let stored = null;
@@ -129,7 +108,7 @@ function loadNearbyKm() {
   } catch (e) {
     stored = null;
   }
-  // 没存过时 wx.getStorageSync 给的是空串：不能当 0（0 = 不限距离）用
+
   if (stored === '' || stored === null || stored === undefined) {
     nearbyKm = util.NEARBY_KM;
     return;
@@ -138,7 +117,6 @@ function loadNearbyKm() {
   nearbyKm = isFinite(value) && value >= 0 ? value : util.NEARBY_KM;
 }
 
-// 页面刷新时把最新的定位交给数据层；返回 true 表示定位变了
 function setViewerLocation(loc) {
   const next = loc && util.hasCoords(loc.latitude, loc.longitude)
     ? { latitude: Number(loc.latitude), longitude: Number(loc.longitude) }
@@ -153,14 +131,13 @@ function viewerLocation() {
   return viewer ? util.clone(viewer) : null;
 }
 
-// 半径：>0 表示只看这个公里数以内；0 表示不限距离
 function setNearbyKm(km) {
   const value = Number(km);
   nearbyKm = isFinite(value) && value > 0 ? value : 0;
   try {
     wx.setStorageSync(NEARBY_KEY, nearbyKm);
   } catch (e) {
-    // 存不下也不影响这次筛选
+
   }
 }
 
@@ -176,22 +153,15 @@ function showAllValue() {
   return showAll;
 }
 
-// 真正在筛的条件：有定位 + 定了半径 + 没点"看全部"
 function nearbyActive() {
   return !showAll && nearbyKm > 0 && !!viewer;
 }
 
-// 这一条离我多远（公里）；没有坐标返回 -1
 function distanceOf(row) {
   if (!viewer) return -1;
   return util.distanceKm(viewer.latitude, viewer.longitude, row && row.lat, row && row.lng);
 }
 
-/*
- * 距离过滤：超出半径的藏起来并计数。
- * 没有坐标的老数据（老版本发的单、示例老师）不藏 —— 定位没授权、老数据没位置时
- * 宁可多显示几条 + 页面给提示，也别让列表凭空空掉。
- */
 function passNearby(row) {
   if (!nearbyActive()) return true;
   const km = distanceOf(row);
@@ -205,7 +175,6 @@ function startFilter() {
   lastHidden = 0;
 }
 
-// 近的排前面；没有距离的一律排最后（再按原来的 id / 时间排）
 function byNearest(a, b) {
   const ka = a.distanceKm >= 0 ? a.distanceKm : Infinity;
   const kb = b.distanceKm >= 0 ? b.distanceKm : Infinity;
@@ -213,7 +182,6 @@ function byNearest(a, b) {
   return a.id - b.id;
 }
 
-// 资料/发布单没手选位置时，用自己的当前定位兜底（保证新数据都算得出距离）
 function fallbackCoords(source) {
   if (source && util.hasCoords(source.lat, source.lng)) {
     return { lat: Number(source.lat), lng: Number(source.lng) };
@@ -223,9 +191,6 @@ function fallbackCoords(source) {
   return null;
 }
 
-// ==================== 初始化 ====================
-
-// 对应 DatabaseManager::init()：成功返回 ''，失败返回错误文案
 function init() {
   try {
     load();
@@ -238,8 +203,6 @@ function init() {
   }
 }
 
-// 首次启动：teachers 表为空时写入示例老师
-// （Qt 版会先尝试导入桌面 teachers.txt，小程序没有本地文件入口，直接给示例数据）
 function seedIfEmpty() {
   const data = load();
   if (data.teachers.length > 0) return;
@@ -248,10 +211,6 @@ function seedIfEmpty() {
   addTeacher('张物理', '物理', '77 元/小时');
 }
 
-// ==================== 老师 ====================
-
-// 科目 + 关键词（姓名/科目/位置）叠加筛选，空串或“全部”代表该条件不筛；
-// 再叠加一层"只看附近"（有定位时按半径过滤，近的排前面）
 function teachers(subject, keyword) {
   const data = load();
   const picked = util.plain(subject);
@@ -260,7 +219,7 @@ function teachers(subject, keyword) {
 
   startFilter();
   return data.teachers
-    .filter((t) => util.plain(t.subject) !== '')   // 资料没填完的老师先不上架
+    .filter((t) => util.plain(t.subject) !== '')
     .filter((t) => !filterSubject || t.subject === picked)
     .filter((t) => {
       if (key === '') return true;
@@ -278,7 +237,6 @@ function teachers(subject, keyword) {
     .sort(byNearest);
 }
 
-// 库里已有的科目（给筛选下拉用）
 function subjects() {
   const set = [];
   load().teachers.forEach((t) => {
@@ -294,7 +252,7 @@ function teacherById(id) {
     return { id: -1, name: '', subject: '', price: '', intro: '', rating: 5, area: '', lat: 0, lng: 0 };
   }
   const copy = util.clone(teacher);
-  copy.distanceKm = distanceOf(teacher);   // 详情页也能顺手显示离我多远
+  copy.distanceKm = distanceOf(teacher);
   return copy;
 }
 
@@ -311,7 +269,7 @@ function addTeacher(name, subject, price) {
     intro: teacherName + '老师，擅长' + util.plain(subject) + '辅导，' + util.DEFAULT_INTRO,
     rating: 5.0,
     area: '',
-    lat: 0,        // 示例数据没有坐标：列表里按"距离未知"照常显示
+    lat: 0,
     lng: 0,
     password: util.hashPassword(util.DEFAULT_PASSWORD)
   });
@@ -320,7 +278,6 @@ function addTeacher(name, subject, price) {
   return true;
 }
 
-// 老师登录：姓名 + 密码。重名不要紧，用密码区分（同名不同密码算两位老师）
 function loginTeacher(name, password) {
   const teacherName = util.plain(name);
   if (teacherName === '' || util.plain(password) === '') {
@@ -337,8 +294,6 @@ function loginTeacher(name, password) {
   return found.id;
 }
 
-// 老师注册：只要姓名 + 密码，科目/价格去“我的”页补。
-// 同名同密码已经存在时直接返回那条记录，避免同一个人反复注册出多条。
 function registerTeacher(name, password) {
   const teacherName = util.plain(name);
   if (teacherName === '' || util.plain(password) === '') {
@@ -355,7 +310,7 @@ function registerTeacher(name, password) {
   data.teachers.push({
     id,
     name: teacherName,
-    subject: '',        // 科目/价格留空，等老师去“我的”页填
+    subject: '',
     price: '',
     intro: '',
     rating: 5.0,
@@ -367,7 +322,6 @@ function registerTeacher(name, password) {
   return id;
 }
 
-// 老师端“我的”页保存资料：teacherId < 0 时新建一条，返回老师 id；失败返回 -1
 function saveTeacherProfile(teacherId, teacher) {
   const name = util.plain(teacher && teacher.name);
   if (name === '') {
@@ -381,7 +335,7 @@ function saveTeacherProfile(teacherId, teacher) {
     : util.plain(teacher.intro);
 
   const data = load();
-  // 位置坐标：手选了位置就用选的；没选就用自己的当前定位兜底
+
   const pickedCoords = util.hasCoords(teacher.lat, teacher.lng)
     ? { lat: Number(teacher.lat), lng: Number(teacher.lng) } : null;
   const myCoords = fallbackCoords(null);
@@ -416,8 +370,7 @@ function saveTeacherProfile(teacherId, teacher) {
   target.price = util.plain(teacher.price);
   target.intro = intro;
   target.area = util.plain(teacher.area);
-  // 这次没带坐标（比如登录页只是顺手补科目）就保留原来的，别把老坐标冲掉；
-  // 老数据本来就没坐标时才用当前定位补一次
+
   if (pickedCoords) {
     target.lat = pickedCoords.lat;
     target.lng = pickedCoords.lng;
@@ -429,8 +382,6 @@ function saveTeacherProfile(teacherId, teacher) {
   emit('teachersChanged');
   return Number(teacherId);
 }
-
-// ==================== 学生账号 / 资料 ====================
 
 function loginStudent(name, password) {
   const studentName = util.plain(name);
@@ -499,7 +450,7 @@ function saveStudentProfile(student) {
   } else {
     const target = data.students.find((s) => s.id === Number(student.id));
     if (!target) return setError('找不到这位学生的资料。');
-    // 只改资料，不动密码
+
     target.name = name;
     target.school = util.plain(student.school);
     target.grade = util.plain(student.grade);
@@ -510,8 +461,6 @@ function saveStudentProfile(student) {
   return true;
 }
 
-// ==================== 时间显示（对应 Qt 的 displayDay / displayTime）====================
-
 function displayDay(dayIso) {
   return util.displayDay(dayIso);
 }
@@ -520,9 +469,6 @@ function displayTime(dayIso, period) {
   return util.displayTime(dayIso, period);
 }
 
-// ==================== 预约 ====================
-
-// 对应 bookingSelect()：老师名字/科目来自 teachers 表，价格优先用订单里的快照
 function readBooking(booking) {
   const teacher = findTeacher(booking.teacher_id);
   return {
@@ -543,7 +489,6 @@ function readBooking(booking) {
   };
 }
 
-// 未结束的订单（待确认、已确认）排前面，其余按上课时间排
 function bookingWeight(status) {
   if (status === util.STATUS_PENDING) return 0;
   if (status === util.STATUS_CONFIRMED) return 1;
@@ -554,7 +499,7 @@ function sortBookings(list) {
   return list.sort((a, b) => {
     const diff = bookingWeight(a.status) - bookingWeight(b.status);
     if (diff !== 0) return diff;
-    // 上课时间是自由文本：老数据是「日期+时段」，按日期字符串排就行
+
     if (a.day !== b.day) return a.day < b.day ? -1 : 1;
     return a.id - b.id;
   });
@@ -583,7 +528,6 @@ function activeBookingCount(studentId) {
     b.status !== util.STATUS_REJECTED).length;
 }
 
-// 价格是自由文本，统计时用订单里的价格快照，只累加能看出数字的那些
 function totalSpent(studentId) {
   let total = 0;
   bookingsForStudent(studentId).forEach((booking) => {
@@ -593,7 +537,6 @@ function totalSpent(studentId) {
   return total;
 }
 
-// 对应 createBooking()：上课时间改成学生自己填的自由文本（不再走时段表），落库在 day 里，period 留空
 function createBooking(teacherId, studentId, time, remark) {
   if (teacherId < 0 || studentId < 0) return setError('请先登录后再预约。');
   const when = util.plain(time);
@@ -602,12 +545,10 @@ function createBooking(teacherId, studentId, time, remark) {
   const data = load();
   const active = (b) => b.status !== util.STATUS_CANCELLED && b.status !== util.STATUS_REJECTED;
 
-  // 时间是自由文本，没法机器比对，只能挡「文字一模一样」的撞课：老师这边
   const teacherBusy = data.bookings.some((b) =>
     b.teacher_id === Number(teacherId) && displayTime(b.day, b.period) === when && active(b));
   if (teacherBusy) return setError('这个时间已经被预约了，换一个吧。');
 
-  // 同一个学生同一时间也不能约两位老师
   const studentBusy = data.bookings.some((b) =>
     b.student_id === Number(studentId) && displayTime(b.day, b.period) === when && active(b));
   if (studentBusy) return setError('这个时间你已经约了别的老师，换个时间或者先取消那一条吧。');
@@ -626,7 +567,7 @@ function createBooking(teacherId, studentId, time, remark) {
     remark: util.plain(remark),
     student_name: studentName,
     student_id: Number(studentId),
-    price: util.plain(teacher ? teacher.price : ''),   // 价格快照：老师改价不影响这条订单
+    price: util.plain(teacher ? teacher.price : ''),
     status: util.STATUS_PENDING,
     created_at: util.nowText()
   });
@@ -646,7 +587,6 @@ function createBooking(teacherId, studentId, time, remark) {
   return true;
 }
 
-// 老师确认 / 拒绝共用一套流程：先校验归属和状态，再改库、发消息、通知页面刷新
 function setBookingHandled(bookingId, teacherId, accept) {
   const booking = load().bookings.find((b) => b.id === Number(bookingId));
   if (!booking) return setError('找不到这条预约记录。');
@@ -706,17 +646,14 @@ function cancelBooking(bookingId, studentId) {
   return true;
 }
 
-// ==================== 消息 ====================
-
 function messagesFor(studentId, teacherId) {
   return load().messages
     .filter((m) => (m.student_id !== 0 && m.student_id === Number(studentId)) ||
                    (m.teacher_id !== 0 && m.teacher_id === Number(teacherId)))
-    .sort((a, b) => b.id - a.id)   // ORDER BY id DESC
+    .sort((a, b) => b.id - a.id)
     .map(util.clone);
 }
 
-// studentId / teacherId 传 0 表示这一侧不收
 function addMessage(title, body, studentId, teacherId) {
   const data = load();
   data.messages.push({
@@ -730,10 +667,6 @@ function addMessage(title, body, studentId, teacherId) {
   save();
   emit('messagesChanged');
 }
-
-// ==================== 评价 ====================
-// 规则：只有下过单的学生才能评价，一位学生对一位老师只能发一条纯文字评价；
-// 老师对每条评价只能回复一次（reply 从空串变有内容即“已回复”）。
 
 function reviewBy(studentId, teacherId) {
   const review = load().reviews.find((r) =>
@@ -762,8 +695,8 @@ function hasBooked(studentId, teacherId) {
 
 function canReview(studentId, teacherId) {
   if (studentId < 0 || teacherId < 0) return false;
-  if (!hasBooked(studentId, teacherId)) return false;   // 没点过单
-  return reviewBy(studentId, teacherId).id < 0;         // 已经评过就不能再评
+  if (!hasBooked(studentId, teacherId)) return false;
+  return reviewBy(studentId, teacherId).id < 0;
 }
 
 function submitReview(studentId, teacherId, content) {
@@ -819,7 +752,6 @@ function reviewCountForTeacher(teacherId) {
   return load().reviews.filter((r) => r.teacher_id === Number(teacherId)).length;
 }
 
-// 老师回复评价：只能回一次，而且只能回给自己的评价
 function replyReview(reviewId, teacherId, reply) {
   const text = util.plain(reply);
   if (text === '') return setError('回复内容不能为空。');
@@ -840,8 +772,6 @@ function replyReview(reviewId, teacherId, reply) {
   return true;
 }
 
-// ==================== 发布单（双边都能发布 / 都能选）====================
-
 function readPost(row) {
   return {
     id: row.id,
@@ -859,11 +789,10 @@ function readPost(row) {
     createdAt: row.created_at,
     lat: Number(row.lat) || 0,
     lng: Number(row.lng) || 0,
-    distanceKm: distanceOf(row)          // 离我多远（公里），-1 = 没坐标
+    distanceKm: distanceOf(row)
   };
 }
 
-// 别人发的、还在招募中的单；自己发的不需要自己接
 function postsForTaking(asTeacher, accountId) {
   if (accountId < 0) return [];
   const myRole = asTeacher ? util.ROLE_TEACHER : util.ROLE_STUDENT;
@@ -888,7 +817,6 @@ function myPosts(asTeacher, accountId) {
     .map(readPost);
 }
 
-// 小程序特有：访客（还没选身份登录）也能浏览所有「招募中」的单
 function allOpenPosts() {
   startFilter();
   return load().posts
@@ -904,11 +832,11 @@ function allOpenPosts() {
 function createPost(post) {
   if (!post || post.publisherId < 0) return setError('请先登录再发布。');
   if (util.plain(post.subject) === '') return setError('科目不能为空。');
-  // 对应 PostDialog：上课时间由发布人自己填（日期+时段合成一句话），不再从时段表里选
+
   if (util.plain(post.time) === '') return setError('上课时间不能为空。');
 
   const data = load();
-  // 位置坐标：手选了位置就用选的，没选就用自己的当前定位兜底
+
   const coords = fallbackCoords(post);
   data.posts.push({
     id: nextId('posts'),
@@ -916,7 +844,7 @@ function createPost(post) {
     publisher_id: Number(post.publisherId),
     publisher_name: util.plain(post.publisherName),
     subject: util.plain(post.subject),
-    day: util.plain(post.time),   // 自由文本的时间存在 day 里，period 留空
+    day: util.plain(post.time),
     period: '',
     price: util.plain(post.price),
     area: util.plain(post.area),
@@ -935,7 +863,6 @@ function createPost(post) {
   return true;
 }
 
-// 选课 / 接单：双方意愿都齐了，直接生成一条“已确认”的预约，并把帖子标记成已成交
 function takePost(postId, asTeacher, accountId) {
   const data = load();
   const row = data.posts.find((p) => p.id === Number(postId));
@@ -948,8 +875,6 @@ function takePost(postId, asTeacher, accountId) {
   const teacherId = post.publisherIsTeacher ? post.publisherId : Number(accountId);
   const studentId = post.publisherIsTeacher ? Number(accountId) : post.publisherId;
 
-  // 时间冲突两个维度都要查（别人的单也不能撞你自己的课）；
-  // 时间是自由文本，只能挡「文字一模一样」的
   const when = displayTime(post.day, post.period);
   const active = (b) => b.status !== util.STATUS_CANCELLED && b.status !== util.STATUS_REJECTED;
   const busy = data.bookings.some((b) =>
@@ -957,7 +882,6 @@ function takePost(postId, asTeacher, accountId) {
     (b.teacher_id === teacherId || b.student_id === studentId));
   if (busy) return setError('这个时间已经有课了，换一条吧。');
 
-  // 先抢单：状态已经不是“招募中”说明被别人抢先了
   if (row.status !== util.POST_OPEN) return setError('这条发布已经被选走了。');
   const takenAt = util.nowText();
   row.status = util.POST_TAKEN;
@@ -982,14 +906,14 @@ function takePost(postId, asTeacher, accountId) {
     student_name: studentName,
     student_id: studentId,
     price: util.plain(price),
-    status: util.STATUS_CONFIRMED,     // 发布=已同意、接单=已同意
+    status: util.STATUS_CONFIRMED,
     created_at: takenAt
   });
   row.booking_id = bookingId;
   save();
 
   if (post.publisherIsTeacher) {
-    // 学生选了老师发布的课
+
     addMessage('选课成功',
       '你选了 ' + teacher.name + ' 老师的' + post.subject + '课，时间：' + when + '，已确认。',
       studentId, 0);
@@ -997,7 +921,7 @@ function takePost(postId, asTeacher, accountId) {
       studentName + ' 同学选了你发布的' + post.subject + '课，时间：' + when + '，已确认。',
       0, teacherId);
   } else {
-    // 老师接了学生发布的需求
+
     addMessage('接单成功',
       '你接了 ' + studentName + ' 同学的' + post.subject + '需求，时间：' + when + '，已确认。',
       0, teacherId);
@@ -1024,9 +948,6 @@ function closePost(postId, asTeacher, accountId) {
   return true;
 }
 
-// ==================== 聊天 ====================
-
-// 一段会话由 (student_id, teacher_id) 唯一确定，不建会话表
 function chatWith(studentId, teacherId) {
   if (studentId < 0 || teacherId < 0) return [];
   return load().chats
@@ -1040,7 +961,6 @@ function chatWith(studentId, teacherId) {
     }));
 }
 
-// 我聊过的人：我 = 老师时对方是学生，反之亦然；未读 = 对方发给我、is_read = 0 的那些
 function chatPeers(asTeacher, accountId) {
   if (accountId < 0) return [];
   const mine = load().chats.filter((c) =>
@@ -1078,7 +998,7 @@ function chatPeers(asTeacher, accountId) {
         lastId: last.id
       };
     })
-    .sort((a, b) => b.lastId - a.lastId);   // 按最后一条排序
+    .sort((a, b) => b.lastId - a.lastId);
 }
 
 function unreadChatCount(asTeacher, accountId) {
@@ -1089,7 +1009,6 @@ function unreadChatCount(asTeacher, accountId) {
     c.sender_role === peerSenderRole && Number(c.is_read) === 0).length;
 }
 
-// 某一会话里对方发来、我还没看的条数（聊天页用来判断“要不要标已读”）
 function unreadWith(asTeacher, accountId, peerId) {
   if (accountId < 0 || peerId < 0) return 0;
   const peerSenderRole = asTeacher ? util.ROLE_STUDENT : util.ROLE_TEACHER;
@@ -1099,7 +1018,6 @@ function unreadWith(asTeacher, accountId, peerId) {
     c.sender_role === peerSenderRole && Number(c.is_read) === 0).length;
 }
 
-// 打开会话就把对方发来的消息标记成已读（红点消失）
 function markChatRead(asTeacher, accountId, peerId) {
   if (accountId < 0 || peerId < 0) return;
   const peerSenderRole = asTeacher ? util.ROLE_STUDENT : util.ROLE_TEACHER;
@@ -1118,13 +1036,11 @@ function markChatRead(asTeacher, accountId, peerId) {
   }
 }
 
-// asTeacher：我是老师，peerId 是学生；否则我是学生，peerId 是老师
 function sendChatMessage(asTeacher, accountId, peerId, body) {
   const text = util.plain(body);
   if (accountId < 0 || peerId < 0) return setError('请先登录再聊天。');
   if (text === '') return setError('消息不能为空。');
 
-  // 注意：老师 id 和学生 id 来自两张表，数值可能一样，不能用 id 相等判断“跟自己聊天”
   const teacherId = asTeacher ? Number(accountId) : Number(peerId);
   const studentId = asTeacher ? Number(peerId) : Number(accountId);
 
@@ -1135,7 +1051,7 @@ function sendChatMessage(asTeacher, accountId, peerId, body) {
     teacher_id: teacherId,
     sender_role: asTeacher ? util.ROLE_TEACHER : util.ROLE_STUDENT,
     body: text,
-    is_read: 0,      // 新消息对收件人来说是未读（自己发的自己不用看红点）
+    is_read: 0,
     created_at: util.nowText()
   });
   save();
@@ -1143,9 +1059,6 @@ function sendChatMessage(asTeacher, accountId, peerId, body) {
   return true;
 }
 
-// ==================== 登录状态 / 自动登录（会话令牌）====================
-
-// 登录成功后调用：库里存令牌摘要，本地缓存存令牌原文
 function rememberLogin(studentId, teacherId) {
   if (studentId < 0 && teacherId < 0) return setError('没有登录账号，不能记住登录状态。');
 
@@ -1154,12 +1067,11 @@ function rememberLogin(studentId, teacherId) {
   const accountId = asTeacher ? Number(teacherId) : Number(studentId);
   const data = load();
 
-  // 本地只能存一枚令牌，所以库里也只留最新的一枚：换账号登录就把旧的作废
   data.sessions = [];
 
   const now = new Date();
   const token = util.newToken();
-  const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);   // 有效期三个月
+  const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   data.sessions.push({
     token_hash: util.hashPassword(token),
     role,
@@ -1177,7 +1089,6 @@ function rememberLogin(studentId, teacherId) {
   return true;
 }
 
-// 启动时调用：有本地令牌且没过期就直接把身份恢复到 Session 里
 function restoreLogin() {
   let token = '';
   try {
@@ -1191,7 +1102,7 @@ function restoreLogin() {
   const now = util.nowText();
   const record = load().sessions.find((s) => s.token_hash === hashed && s.expires_at >= now);
   if (!record) {
-    // 令牌无效或已过期：本地也清掉，回登录页重新选身份
+
     wx.removeStorageSync('session_token');
     return false;
   }
@@ -1214,14 +1125,12 @@ function restoreLogin() {
     session.bindStudent(student.id, student.name);
   }
 
-  // 每次自动登录顺手续期，常用的人不会被踢下线
   const renew = new Date(new Date().getTime() + 90 * 24 * 60 * 60 * 1000);
   record.expires_at = util.nowText(renew);
   save();
   return true;
 }
 
-// 退出登录：库里那条令牌删掉，本地也删掉
 function forgetLogin() {
   let token = '';
   try {
@@ -1238,14 +1147,13 @@ function forgetLogin() {
   wx.removeStorageSync('session_token');
 }
 
-// 测试用：清空整库
 function reset() {
   db = emptyDb();
   save();
 }
 
 module.exports = {
-  // 常量
+
   statusPending: () => util.STATUS_PENDING,
   statusConfirmed: () => util.STATUS_CONFIRMED,
   statusRejected: () => util.STATUS_REJECTED,
@@ -1258,7 +1166,7 @@ module.exports = {
 
   get lastError() { return lastError; },
   set lastError(value) { lastError = value; },
-  // 上一次列表筛掉了几条（超出半径被隐藏的），页面拿它给提示
+
   get lastHidden() { return lastHidden; },
 
   init, on, off, reset,

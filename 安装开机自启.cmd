@@ -1,12 +1,4 @@
 @echo off
-rem ============================================================
-rem  Installs a Startup entry so the TutorMini backend starts
-rem  by itself every time Windows starts. The generated launcher
-rem  also syncs utils/config.js with the current LAN IPv4 and
-rem  starts the cloudflared quick tunnel in the background.
-rem  ASCII-only on purpose (cmd.exe reads .cmd as ANSI);
-rem  Chinese messages are printed through PowerShell + base64.
-rem ============================================================
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
@@ -16,7 +8,6 @@ if not exist "%PS%" set "PS=powershell"
 set "MSG_NO=W3hdIOayoeacieaJvuWIsCBOb2RlLmpz77yM6KOF5aW95LmL5ZCO5YaN6L+Q6KGM5pys6ISa5pys44CCDQogICAg5LiL6L2977yaaHR0cHM6Ly9ub2RlanMub3JnLyDvvIjpgIkgTFRT77yJ"
 set "MSG_OK=W+KIml0g5bey6K6+572u5byA5py66Ieq5Yqo5ZCv5Yqo5ZCO56uv44CC5Lul5ZCO5byA5py65a6D6Ieq5bex5bCx6LW35p2l5LqG77yM5LiN55So5YaN5Y+M5Ye75Lu75L2V5Lic6KW/44CCDQogICAg5Y+W5raI77ya5Y+M5Ye7IOWPlua2iOW8gOacuuiHquWQry5jbWQgICAg56uL5Y2z5YGc5o6J77ya5Y+M5Ye7IOWBnOatouWQjuerry5jbWQ="
 
-rem ---- locate node, same search order as the main launcher ----
 set "NODE_EXE="
 set "NODE_DIR="
 for /f "tokens=3" %%i in ('reg query "HKLM\SOFTWARE\Node.js" /v InstallPath 2^>nul ^| findstr /i "REG_SZ"') do set "NODE_DIR=%%i"
@@ -37,7 +28,6 @@ if not defined NODE_EXE (
   exit /b 1
 )
 
-rem ---- write the startup launcher ----
 set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "TARGET=!STARTUP!\TutorMiniBackend.cmd"
 

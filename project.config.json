@@ -1,6 +1,6 @@
 {
-  "description": "TutorFinal 家教平台 · 微信小程序版",
-  "appid": "wxaa4fb30710adfcc2",
+  "description": "TutorMini 家教平台",
+  "appid": "touristappid",
   "projectname": "TutorMini",
   "compileType": "miniprogram",
   "libVersion": "3.5.5",

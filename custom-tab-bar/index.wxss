@@ -29,7 +29,6 @@
 
 .nav-active { color: #0A9C90; font-weight: bold; }
 
-/* 选中的那一格用一小段青绿渐变的线点一下，比整块变色更收敛 */
 .nav-active::after {
   content: '';
   position: absolute;
@@ -48,7 +47,6 @@
   top: 6px;
 }
 
-/* 自定义组件默认跟页面样式隔离，app.wxss 里的 .badge 进不来，这里再写一份 */
 .badge {
   background-color: #E5484D;
   color: #FFFFFF;

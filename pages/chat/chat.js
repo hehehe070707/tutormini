@@ -1,12 +1,3 @@
-/*
- * 聊天页：老师 ↔ 官方助手（Agent）。
- *
- * 真人聊天（老师 ↔ 平台的账号）已经整条下线，页面上只剩这一条官方通道：
- * 老师从需求单 / 我的课点进来看报价、合同、试课这些事，对面是平台的虚拟助手。
- * 这条会话不受条数限制；会话记录按 (teacher_id, agent_id) 存，关掉再打开还在。
- * 打开会话就把助手发来的消息标记已读（红点消失）。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 
@@ -46,14 +37,12 @@ Page({
     this.onHide();
   },
 
-  // 会话记录存在后端（换设备打开同一段聊天，消息还在）
   async refresh() {
     const agentId = this.data.agentId;
     if (!session.isLoggedIn() || !(agentId >= 0)) return;
 
-    // 一次请求拿回消息 + 未读；有未读才去标已读，不做"标已读 → 又刷新"的来回
     const chat = await store.agentChatSession(agentId);
-    // 带上未读条数：数据层会先把底部导航的红点减掉，不用等切到别的页面
+
     if (chat.unread > 0) store.markAgentChatRead(agentId, chat.unread);
 
     const messages = (chat.list || []).map((message) => ({
@@ -70,7 +59,6 @@ Page({
       wx.setNavigationBarTitle({ title });
     }
 
-    // setData 前先比一遍：没变就不往渲染层传
     const patch = {};
     if (this.data.canSend !== true) patch.canSend = true;
     if (this.data.tip !== NEUTRAL_TIP) patch.tip = NEUTRAL_TIP;

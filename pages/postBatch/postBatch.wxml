@@ -9,7 +9,6 @@
   <view class="muted">「对老师的要求」就是那 5 个固定字段（性别 / 学历 / 教龄 / 证书 / 授课方式）：把家长原话贴进来点【解析原话】，系统自动填；「不限」＝家长没提，不参与筛选。</view>
   <view class="gap"></view>
 
-  <!-- 家长原话批量解析：一行一条 → 一次全解析 → 每条生成一行（科目 / 时间再补上） -->
   <view class="card">
     <view class="field-label">家长原话（一行一条，可批量解析）</view>
     <textarea class="textarea" placeholder="要女老师，硕士以上，最好有经验，能线下&#10;男老师，3 年以上教龄，有教师资格证，线下"
@@ -23,7 +22,6 @@
     </view>
   </view>
 
-  <!-- 粘贴导入：整段 JSON，或者从表格里复制的多行文本 -->
   <view class="card">
     <view class="field-label">粘贴导入（可选）</view>
     <textarea class="textarea" placeholder="① JSON：[{&quot;subject&quot;:&quot;数学&quot;,&quot;time&quot;:&quot;周六上午&quot;,&quot;price&quot;:&quot;150 元/小时&quot;,&quot;grade&quot;:&quot;初二&quot;,&quot;raw_text&quot;:&quot;要女老师，硕士以上，能线下&quot;,&quot;requirements&quot;:{&quot;minYears&quot;:3,&quot;certificate&quot;:&quot;教师资格证&quot;,&quot;priceMin&quot;:100,&quot;priceMax&quot;:150}}]&#10;② 一行一条：数学,周六上午,150 元/小时,海淀·中关村,初二补函数,初二,女,本科,3,100-150,985/211优先,教师资格证,要女老师硕士以上"
@@ -35,7 +33,6 @@
     </view>
   </view>
 
-  <!-- 手动加行 -->
   <view class="list">
     <view class="list-row batch-row" wx:for="{{rows}}" wx:key="key">
       <view class="grow">
@@ -65,14 +62,14 @@
           <input class="input" placeholder="例如：初二数学，想补函数" value="{{item.note}}"
                  data-index="{{index}}" data-field="note" bindinput="onRowInput" />
         </view>
-        <!-- 家长原话：点【解析这条原话】自动填下面的 5 个固定字段（解析不出来就全「不限」） -->
+
         <view class="field">
           <view class="field-label">家长原话（可留空）</view>
           <input class="input" placeholder="例如：要女老师，硕士以上，能线下" value="{{item.rawText}}"
                  data-index="{{index}}" data-field="rawText" bindinput="onRowInput" />
           <button class="btn-ghost btn-sm raw-parse" data-index="{{index}}" bindtap="onParseRow">✨ 解析这条原话</button>
         </view>
-        <!-- 对老师的要求：老师端照着判断"我符不符合" -->
+
         <view class="row">
           <view class="field grow">
             <view class="field-label">年级</view>
@@ -149,7 +146,6 @@
     {{submitting ? '发布中…' : '发布 ' + rows.length + ' 条'}}
   </button>
 
-  <!-- 结果：成功几条、失败的是哪几条 -->
   <block wx:if="{{resultText}}">
     <view class="gap"></view>
     <view class="card">

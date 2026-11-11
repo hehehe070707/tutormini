@@ -1,10 +1,3 @@
-/*
- * 老师简历页：对应 Qt 版的 TeacherDetailPage（现在只当"简历页"用）。
- * 入口：学生「我的课程」里点老师名字。
- * 内容：资料 + 完整简历（不设查看限制）+ 底部一个动作【复制简历】——平台把这段
- * 文字转给客户看。评价区已下线：客户不在平台上，没有评价来源。
- */
-
 const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const location = require('../../utils/location.js');
@@ -19,9 +12,9 @@ Page({
     introText: '',
     notFound: false,
 
-    resumeRows: [],       // 完整简历（学历 / 学校 / 教龄 / 证书 / 可教科目 / 价格 / 可教时段）
-    resumeIntro: '',      // 自我介绍
-    copyText: ''          // 【复制简历】用的整段文字
+    resumeRows: [],
+    resumeIntro: '',
+    copyText: ''
   },
 
   onLoad(options) {
@@ -30,7 +23,6 @@ Page({
     this.seq = 0;
   },
 
-  // 首次进入、从登录页返回都在 onShow 里刷一次，不做重复刷新
   onShow() {
     store.on('teachersChanged', this.refresh);
     this.refresh();
@@ -48,7 +40,7 @@ Page({
     const seq = ++this.seq;
     const teacherId = this.data.teacherId;
     if (!(teacherId >= 0)) return;
-    // 详情页也要算距离：先把最新定位交给数据层，请求时一起发给后端
+
     store.setViewerLocation(location.current());
 
     const teacher = await store.teacherById(teacherId);
@@ -84,7 +76,6 @@ Page({
     });
   },
 
-  // 复制整段简历：平台直接转给客户（只含教学信息，没有联系方式）
   onCopyResume() {
     const text = this.data.copyText;
     if (text === '') {
@@ -102,7 +93,6 @@ Page({
   }
 });
 
-// 简历拼成一段纯文字：姓名 / 科目 / 价格 / 各栏 + 自我介绍
 function resumeText(teacher, rows, intro) {
   const lines = [teacher.name + '（' + (util.plain(teacher.subject) === '' ? '科目未填' : teacher.subject) + '）'];
   if (util.plain(teacher.price) !== '') lines.push('价格：' + teacher.price);

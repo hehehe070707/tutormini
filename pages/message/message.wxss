@@ -4,7 +4,6 @@
 .guest-tip { background: #F3FBFA; border-color: #CFF0EA; }
 .dot { color: #E5484D; }
 
-/* 官方助手那一栏：置顶 + 标「官方」 */
 .agent-row { background: #F3FBFA; border: 1px solid #CFF0EA; }
 .agent-avatar {
   width: 64rpx; height: 64rpx; line-height: 64rpx; text-align: center;
@@ -19,7 +18,6 @@
   background: #E7F8F5; border-radius: 8rpx; padding: 1px 8rpx; margin-left: 6px;
 }
 
-/* 我的单子：一条单子一张卡片，标题是单号（20261008-1） */
 .section { margin: 14px 0 8px; }
 .section-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -35,7 +33,6 @@
 }
 .hide-toggle:active { background: #E7F8F5; }
 
-/* 卡片头：单号 + 科目 / 上课时间 + 右上角状态 */
 .box-card { padding: 12px 14px 8px; }
 .box-head { display: flex; align-items: flex-start; justify-content: space-between; }
 .box-code { font-size: 15px; font-weight: bold; color: #1F2328; }
@@ -43,7 +40,6 @@
 .box-state { display: flex; align-items: center; flex-shrink: 0; }
 .box-state .badge { margin-left: 6px; }
 
-/* 卡片里的单子属性：一行一条，长文本换行显示全 */
 .box-attrs {
   margin-top: 6px;
   padding-top: 6px;
@@ -51,7 +47,6 @@
 }
 .box-attrs .muted { line-height: 1.7; word-break: break-all; }
 
-/* 卡片里的消息：一条一格，浅底当分隔，不抢状态的戏 */
 .box-msgs {
   margin-top: 8px;
   border-top: 1px solid #F2F4F7;
@@ -69,7 +64,6 @@
 .bm-body { margin-top: 2px; line-height: 1.6; }
 .bm-tip { margin-top: 2px; color: #0A9C90; }
 
-/* 卡片脚：共 N 条 + 隐藏 */
 .box-foot {
   display: flex; align-items: center; justify-content: space-between;
   padding-top: 8px;

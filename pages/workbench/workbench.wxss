@@ -1,12 +1,9 @@
-/* 中介工作台：发单入口 + 待办（只装"今天要动手的事"，单子档案在【单子】那格） */
-
 .wb-title { font-size: 15px; font-weight: bold; color: #1F2328; margin-bottom: 2px; }
 .guest-tip { background: #F3FBFA; border-color: #CFF0EA; }
 
 .wb-publish { margin: 4px 0 0; }
 .wb-publish .btn { flex: 1; }
 
-/* 待办卡片：左边一条青色竖条标出"要动手的事"，和页面标题那根竖条一个色 */
 .section { margin: 14px 0 8px; }
 .page-title .badge { margin-left: 6px; vertical-align: middle; }
 .todo-card { border-left: 4px solid #0FB5A6; }
@@ -15,5 +12,5 @@
   margin-top: 8px;
 }
 .todo-ops .btn, .todo-ops .btn-ghost, .todo-ops .btn-danger { margin: 6px 0 0 6px; }
-/* 待收款是钱的事，用琥珀色提醒一下（和状态色的 pending 一致） */
+
 .todo-card.todo-pay { border-left-color: #E08700; }

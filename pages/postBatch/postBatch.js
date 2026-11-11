@@ -1,16 +1,3 @@
-/*
- * 批量发单页（平台侧专用）：一次贴多条需求。
- *   - 手动加行：科目 / 时间 / 价格 / 位置 / 备注 + 家长原话（可一键解析）+ 对老师的要求
- *   - 粘贴导入：整段 JSON，或者从表格里复制的多行文本（最后可以带一列"家长原话"）
- *   - 批量解析：家长原话一行一条，粘一次全解析（POST /api/agent/parse 的批量用法）
- *   - 提交后逐条落库，页面显示成功几条、失败的是哪几条（后端逐条判，不整批回滚）
- * 入口：发单页右上角【批量发单】。
- *
- * 对老师的要求就是那 5 个固定字段（性别 / 学历 / 教龄 / 证书 / 授课方式）：
- * 家长原话交给外部 Agent 解析出来，「不限」＝家长没提、不参与筛选；时薪由解析折算（按次给钱也会折），
- * 学校要求是旧的补充字段。
- */
-
 const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const auth = require('../../utils/auth.js');
@@ -29,7 +16,6 @@ function indexOfOption(options, value) {
   return index < 0 ? 0 : index;
 }
 
-// 宽松匹配：'本科及以上' → 命中学历里的「本科」、'英语四级' → 「四六级」；认不出来就是 0（不限）
 function looseIndex(options, value) {
   const text = util.plain(value);
   if (text === '') return 0;
@@ -52,10 +38,6 @@ function looseIndex(options, value) {
   return 0;
 }
 
-/*
- * 教龄 → 固定档位下标（不限 / 1 / 3 / 5）。
- * 和后端一个规矩：取"不超过原值"的最大档位（2 年 → 1 年档、8 年 → 5 年档）。
- */
 function yearsToIndex(value) {
   const text = util.plain(value);
   if (text === '' || text === util.REQ_UNLIMITED) return 0;
@@ -67,7 +49,6 @@ function yearsToIndex(value) {
   return 0;
 }
 
-// 解析出来的时薪 → 输入框里的 '100-200' / '150'（不限 = 空）
 function hoursText(result) {
   const lo = Number(result && result.priceMin) || 0;
   const hi = Number(result && result.priceMax) || 0;
@@ -86,16 +67,16 @@ function newRow(values) {
     price: util.plain(src.price),
     area: util.plain(src.area),
     note: util.plain(src.note),
-    // 家长原话：粘进来点【解析原话】→ 自动填下面那 5 个固定字段
+
     rawText: util.plain(src.rawText),
-    // 对老师的要求（固定 5 字段，「不限」= 不筛）
+
     gradeIndex: indexOfOption(GRADE_OPTIONS, src.grade),
     genderIndex: indexOfOption(GENDER_OPTIONS, src.gender),
     educationIndex: looseIndex(EDU_OPTIONS, src.education),
     yearsIndex: yearsToIndex(src.minYears),
     certIndex: looseIndex(CERT_OPTIONS, src.certificate),
     teachModeIndex: indexOfOption(TEACH_MODE_OPTIONS, src.teachMode),
-    // 家长给的时薪（元/小时，'100-200' 这种；按次给钱的由解析折成时薪）；学校要求是旧的补充字段
+
     hourly: util.plain(src.hourly),
     school: util.plain(src.school),
     externalId: util.plain(src.externalId)
@@ -110,7 +91,6 @@ function pick(src, keys) {
   return '';
 }
 
-// 时薪区间：'100-200' / '100~200' / '100 元-200 元/小时' 都能拆
 function rangeParts(range) {
   const text = util.plain(range).replace(/[^\d\-~～—－]/g, '');
   if (text === '') return { min: '', max: '' };
@@ -118,7 +98,6 @@ function rangeParts(range) {
   return { min: parts[0] || '', max: parts[1] || '' };
 }
 
-// JSON 里 requirements / raw_text 的写法也认（整段贴过来）
 function requirementFields(item) {
   const req = (item && item.requirements) || {};
   return {
@@ -143,12 +122,6 @@ function requirementFields(item) {
   };
 }
 
-/*
- * 粘贴解析：先按 JSON 试，不行再按「每行一条」拆。
- * 一行里的列用 逗号 / 制表符 / 竖线 分隔，顺序：
- *   科目、时间、价格、位置、备注、年级、性别、学历、教龄、时薪(100-200)、学校、证书、家长原话
- * 后面的列可以不给；第一行如果是表头（含「科目」）就跳过。
- */
 function parseImport(text) {
   const raw = util.plain(text);
   if (raw === '') return [];
@@ -186,7 +159,7 @@ function parseImport(text) {
   raw.split(/\r?\n/).forEach((line, index) => {
     const text2 = line.trim();
     if (text2 === '') return;
-    if (index === 0 && /科目|subject/i.test(text2)) return;   // 表头
+    if (index === 0 && /科目|subject/i.test(text2)) return;
     const parts = text2.split(/\t|,|，|\||｜/).map((part) => part.trim());
     if (parts.length < 1 || util.plain(parts[0]) === '') return;
     rows.push(newRow({
@@ -212,7 +185,7 @@ Page({
   data: {
     rows: [],
     pasteText: '',
-    rawPasteText: '',       // 家长原话（一行一条）批量解析用
+    rawPasteText: '',
     parsingRaw: false,
     resultText: '',
     failed: [],
@@ -238,7 +211,6 @@ Page({
     }
   },
 
-  // ---------- 手动加行 ----------
   onAddRow() {
     this.setData({ rows: this.data.rows.concat([newRow()]) });
   },
@@ -268,16 +240,10 @@ Page({
     this.setData({ rows });
   },
 
-  // ---------- 粘贴导入 ----------
   onPasteInput(event) {
     this.setData({ pasteText: event.detail.value });
   },
 
-  // ---------- 家长原话 → 结构化要求（POST /api/agent/parse）----------
-  /*
-   * 解析结果 → 这一行那 5 个选择器的下标。
-   * 解析不出来（后端会返回全「不限」）就是把要求清成不限，不影响发单。
-   */
   requirementPatch(result) {
     const req = result || {};
     return {
@@ -290,7 +256,6 @@ Page({
     };
   },
 
-  // 单行【解析】：把这一行的家长原话交给后端（外部 Agent）解析，自动填要求
   async onParseRow(event) {
     const index = Number(event.currentTarget.dataset.index);
     const row = this.data.rows[index];
@@ -304,7 +269,6 @@ Page({
     this.applyParsed([index], [result], '解析完了');
   },
 
-  // 一键【全部解析】：所有填了家长原话的行一次发过去（后端逐条解析）
   async onParseAllRows() {
     if (this.data.parsingRaw) return;
     const rows = this.data.rows.slice();
@@ -322,10 +286,6 @@ Page({
     this.applyParsed(indexes, list, '解析了 ' + indexes.length + ' 条');
   },
 
-  /*
-   * 家长原话一行一条 → 批量解析 → 每条生成一行。
-   * 原话里只有要求（科目 / 时间还得自己补），所以解析完在列表里接着填就行。
-   */
   onRawPasteInput(event) {
     this.setData({ rawPasteText: event.detail.value });
   },
@@ -365,7 +325,6 @@ Page({
     wx.showToast({ title: '导入了 ' + rows.length + ' 条', icon: 'none' });
   },
 
-  // 把解析结果写回指定的行（解析失败 list 里对应项是 null → 要求全回到「不限」）
   applyParsed(indexes, list, tip) {
     const rows = this.data.rows.slice();
     let failed = 0;
@@ -413,7 +372,6 @@ Page({
     });
   },
 
-  // ---------- 提交 ----------
   async onSubmit() {
     if (this.data.submitting) return;
     if (!auth.requireRole('student', 'student')) return;
@@ -434,13 +392,13 @@ Page({
         externalId: util.plain(row.externalId),
         rawText: util.plain(row.rawText),
         requirements: {
-          // 固定 5 字段（家长原话解析出来的，也能手改）；「不限」= 家长没提，不参与筛选
+
           gender,
           education: this.data.eduOptions[row.educationIndex],
           minYears: this.data.yearsOptions[row.yearsIndex],
           certificate: this.data.certOptions[row.certIndex],
           teachMode: this.data.teachModeOptions[row.teachModeIndex],
-          // 时薪（元/小时）：家长按次给钱的由解析折算成时薪；学校要求是旧的补充字段
+
           priceMin: hourly.min,
           priceMax: hourly.max,
           school: util.plain(row.school)

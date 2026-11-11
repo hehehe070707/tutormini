@@ -2,10 +2,9 @@
 .p-ops { display: flex; flex-direction: column; align-items: flex-end; }
 .p-take { margin-top: 6px; }
 .section { margin: 14px 0 8px; }
-/* 附近筛选提示条：白底 + 青绿描边（和首页一套） */
+
 .nearby-bar { background: #FFFFFF; border-color: #CFF0EA; }
 
-/* 单子说明先露两行，点一下弹层看完整的（-webkit-line-clamp 不支持时就是整段显示） */
 .note-clamp {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -13,19 +12,17 @@
   overflow: hidden;
 }
 .more-tip { color: #0A9C90; font-size: 12px; margin-top: 2px; }
-/* 接单列表里的时间冲突提示（只提醒，不挡投递） */
+
 .clash-tip { color: #E08700; font-size: 12px; }
 
-/* 接单页筛选面板 */
 .filter-card { background: #FFFFFF; border-color: #CFF0EA; }
 .filter-title { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
 .filter-body { margin-top: 10px; }
 .filter-body .field { margin-bottom: 8px; }
-/* 筛选里的多选项：一排能放几个放几个 */
+
 .pick-item { display: inline-block; margin: 0 16px 6px 0; font-size: 13px; }
 .filter-body .section { margin: 10px 0 4px; font-size: 14px; }
 
-/* 匹配徽章：✅ 完全符合 / ⚠️ 部分符合 / ❌ 不符合 */
 .match-line { margin: 2px 0 4px; }
 .match-badge {
   font-size: 12px; padding: 1px 8px; border-radius: 8rpx; margin-right: 6px;
@@ -35,15 +32,12 @@
 .match-badge.st-rejected { background: #FFEFF0; color: #E5484D; }
 .match-tip { font-size: 12px; }
 
-/* 发布弹窗：家长原话 + 智能解析那一行（解析结果就一行小字） */
 .parse-tip { font-size: 12px; margin-left: 10px; }
 
-/* 单子详情弹层：一行一项，标签 + 内容（对应 QMessageBox 里的详情） */
 .d-row { display: flex; margin-bottom: 8px; }
 .d-label { width: 68px; color: #6B7280; font-size: 13px; flex-shrink: 0; }
 .d-value { flex: 1; font-size: 14px; word-break: break-all; }
 
-/* 学生「我发布的」：每条单下面列出收到的投递 */
 .post-row { align-items: flex-start; }
 .invite-row {
   display: flex;
@@ -57,7 +51,6 @@
 .post-row .p-ops .btn, .post-row .p-ops .btn-ghost, .post-row .p-ops .btn-danger { margin-left: 6px; }
 .post-row .p-take { margin-top: 0; }
 
-/* 课次流水（试课 / 第 N 次课） */
 .lesson-box { margin-top: 8px; }
 .lesson-row {
   display: flex;
@@ -69,7 +62,6 @@
 .lesson-title { font-size: 14px; }
 .lesson-row .p-ops { flex-direction: row; justify-content: flex-end; }
 
-/* ---------- 中介发单页：一段说明 + 两个发单入口 ---------- */
 .wb-title { font-size: 15px; font-weight: bold; color: #1F2328; margin-bottom: 4px; }
 .pub-tip { background: #F3FBFA; border-color: #CFF0EA; }
 .pub-tip .muted { line-height: 1.7; }

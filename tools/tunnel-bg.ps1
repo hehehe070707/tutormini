@@ -1,25 +1,10 @@
-﻿<#
- * 后台把穿透隧道拉起来（不用自己盯着一个窗口）
- *
- * 由「启动后端.cmd」顺手调用：把本机 http://127.0.0.1:3000 通过 cloudflared 快速隧道
- * 暴露成公网 https 地址（手机用 4G / 校园网也能连），地址自动写进 utils/config.js 的
- * TUNNEL_BASE 那一行。
- *
- * 和「穿透后端.cmd」的区别：这个是后台跑完就退出的（cloudflared 隐藏窗口常驻），
- * 适合开机自启；想盯着隧道日志就双击「穿透后端.cmd」。
- * 已经在跑就不重复起（快速隧道只要进程活着，地址一直有效）。
- *
- * 注意：本文件必须保持「UTF-8 带 BOM」，否则 Windows PowerShell 5.1 会按 ANSI 读，中文乱码。
- #>
-
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 $port = 3000
 $root = Split-Path -Parent $PSScriptRoot
 $cfgPath = Join-Path $root 'utils\config.js'
 
-# cloudflared 可能在哪：PATH / 项目根目录 / winget 装的默认位置
 function Find-Cloudflared {
   $candidates = @()
   $cmd = Get-Command cloudflared -ErrorAction SilentlyContinue
@@ -34,7 +19,6 @@ function Find-Cloudflared {
   return ''
 }
 
-# 读 config.js 里当前的穿透地址（没有就返回空串）
 function Get-TunnelBase {
   if (-not (Test-Path -LiteralPath $cfgPath)) { return '' }
   $cfg = [IO.File]::ReadAllText($cfgPath, [Text.Encoding]::UTF8)
@@ -43,7 +27,6 @@ function Get-TunnelBase {
   return ''
 }
 
-# 把隧道地址写回 utils/config.js 的 TUNNEL_BASE 那一行（只动这一行，格式不对就跳过，不硬改）
 function Set-TunnelBase($publicUrl) {
   $apiBase = $publicUrl.TrimEnd('/') + '/api'
   if (-not (Test-Path -LiteralPath $cfgPath)) {
@@ -65,7 +48,7 @@ function Set-TunnelBase($publicUrl) {
     Write-Host ("const TUNNEL_BASE = '" + $apiBase + "';") -ForegroundColor Red
     return $false
   }
-  # 复核一次，确认真写进去了（写权限被拦时别报"已写入"）
+
   $check = [IO.File]::ReadAllText($cfgPath, [Text.Encoding]::UTF8)
   if (-not $check.Contains($apiBase)) {
     Write-Host 'utils/config.js 好像没写成功，请手动把 TUNNEL_BASE 改成：' -ForegroundColor Red
@@ -77,7 +60,6 @@ function Set-TunnelBase($publicUrl) {
   return $true
 }
 
-# ---------- 已经在跑就直接用 ----------
 $alive = @(Get-Process -Name cloudflared -ErrorAction SilentlyContinue)
 if ($alive.Count -gt 0) {
   Write-Host ('穿透隧道已经在后台跑着（PID ' + $alive[0].Id + '），不重复启动。') -ForegroundColor Green
@@ -120,7 +102,6 @@ if ($url -eq '') {
   exit 1
 }
 
-# 后端和隧道通常是同一秒起来的，这里再给它几秒（只提醒，不拦）
 $backendUp = $false
 for ($i = 0; $i -lt 5; $i++) {
   try {

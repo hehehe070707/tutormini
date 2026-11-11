@@ -1,13 +1,3 @@
-/*
- * 建表 + 首次示例数据。
- *
- * 表结构和 Qt 版 databasemanager.cpp 里的 7 张表（teachers / students / bookings / messages /
- * reviews / posts / chats）+ sessions 一一对应，另外多一张 wx_bindings（openid ↔ 账号绑定，
- * 用来支持 wx.login 自动登录）。
- *
- * 两套 DDL：SQLite（开发）和 MySQL（上线）。字段名和含义完全一致，换库不用改业务代码。
- */
-
 const util = require('../lib/util.js');
 
 const SQLITE_DDL = [
@@ -79,10 +69,7 @@ const SQLITE_DDL = [
      created_at TEXT NOT NULL DEFAULT '',
      replied_at TEXT NOT NULL DEFAULT ''
   )`,
-  /*
-   * 修正记录：中介手动改单子 / 订单状态、补录订单、作废单子时各记一笔。
-   * 只用于回溯（页面上「修正记录」那几行），不参与业务计算。
-   */
+
   `CREATE TABLE IF NOT EXISTS corrections (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      actor_role TEXT NOT NULL DEFAULT '',
@@ -133,15 +120,7 @@ const SQLITE_DDL = [
      is_read INTEGER NOT NULL DEFAULT 0,
      created_at TEXT NOT NULL DEFAULT ''
   )`,
-  /*
-   * 课次：每次上课（含试课）一条记录。
-   *   kind   试课 / 正式
-   *   seq    这是这条订单的第几次正式课（试课固定 0）
-   *   status 待确认 / 已确认 / 待支付 / 已支付
-   *   result 只有试课用：通过 / 不通过
-   *   content 老师提交的上课情况；reason 平台有异议时填的原因
-   *   fee    这条课次的课时费（整数元）：正式课＝订单价格快照，试课＝半价或全价
-   */
+
   `CREATE TABLE IF NOT EXISTS lessons (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      booking_id INTEGER NOT NULL DEFAULT 0,
@@ -170,10 +149,7 @@ const SQLITE_DDL = [
      account_id INTEGER NOT NULL DEFAULT 0,
      created_at TEXT NOT NULL DEFAULT ''
    )`,
-  /*
-   * 虚拟助手账号（外部 Agent 的「人设」）：名字 / 头像 / 简介 + 归属哪个学生账号。
-   * 它不参与登录，只出现在消息中心和聊天会话里（老师看到的「官方助手」）。
-   */
+
   `CREATE TABLE IF NOT EXISTS agents (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      name TEXT NOT NULL DEFAULT '',
@@ -183,7 +159,7 @@ const SQLITE_DDL = [
      is_official INTEGER NOT NULL DEFAULT 1,
      created_at TEXT NOT NULL DEFAULT ''
    )`,
-  // 外部 Agent 的访问令牌：库里只存摘要，绑定学生账号，可吊销
+
   `CREATE TABLE IF NOT EXISTS agent_tokens (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      token_hash TEXT NOT NULL,
@@ -194,7 +170,7 @@ const SQLITE_DDL = [
      created_at TEXT NOT NULL DEFAULT '',
      last_used_at TEXT NOT NULL DEFAULT ''
    )`,
-  // 事件钩子：关键节点先落库，配了 AGENT_WEBHOOK_URL 再异步 POST 给外部 Agent
+
   `CREATE TABLE IF NOT EXISTS agent_events (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      type TEXT NOT NULL DEFAULT '',
@@ -207,10 +183,7 @@ const SQLITE_DDL = [
      created_at TEXT NOT NULL DEFAULT '',
      delivered_at TEXT NOT NULL DEFAULT ''
    )`,
-  /*
-   * 收款 / 退款：老师确认接单后，平台发合同 + 收款码，老师付款、平台确认收款，
-   * 试课没上成走退款。amount 是整数元；kind = charge（收款）/ refund（退款）。
-   */
+
   `CREATE TABLE IF NOT EXISTS payments (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      booking_id INTEGER NOT NULL DEFAULT 0,
@@ -233,7 +206,7 @@ const SQLITE_DDL = [
   `CREATE INDEX IF NOT EXISTS idx_reviews_teacher ON reviews (teacher_id)`,
   `CREATE INDEX IF NOT EXISTS idx_posts_status ON posts (status)`,
   `CREATE INDEX IF NOT EXISTS idx_posts_code ON posts (code)`,
-  // 外部单号唯一：同一条外部单重复导入不会建出第二条（空值不算冲突）
+
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_external ON posts (external_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions (token_hash)`,
   `CREATE INDEX IF NOT EXISTS idx_agent_tokens_hash ON agent_tokens (token_hash)`,
@@ -447,17 +420,12 @@ const MYSQL_DDL = [
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 ];
 
-// 首次建库写入的示例老师（对应原来 store.seedIfEmpty 的三位老师）
 const DEMO_TEACHERS = [
   ['王数学', '数学', '99 元/小时'],
   ['李英语', '英语', '88 元/小时'],
   ['张物理', '物理', '77 元/小时']
 ];
 
-/*
- * 后来才加的表字段：CREATE TABLE IF NOT EXISTS 不会改老表，所以这里补一次 ALTER TABLE。
- * 字段已经存在时会报错，直接忽略（老库每次启动都会走到这里）。
- */
 async function ensureColumns(db) {
   const mysql = db.driver === 'mysql';
   const text = mysql ? 'VARCHAR(255) NOT NULL DEFAULT \'\'' : "TEXT NOT NULL DEFAULT ''";
@@ -466,44 +434,42 @@ async function ensureColumns(db) {
   const score = mysql ? 'INT NOT NULL DEFAULT 0' : 'INTEGER NOT NULL DEFAULT 0';
   const additions = [
     ['bookings', 'resume', mysql ? 'TEXT' : "TEXT NOT NULL DEFAULT ''"],
-    // 投递单挂在哪条发布单下面（0 = 老式的学生直接预约，没有单）
+
     ['bookings', 'post_id', score],
-    // 老师简历（「我的简历」页）：学历 / 学校 / 教龄 / 证书 / 可教时段
+
     ['teachers', 'education', text],
     ['teachers', 'school', text],
     ['teachers', 'years', text],
     ['teachers', 'certificate', text],
     ['teachers', 'times', text],
-    // 课次课时费（老库里的 lessons 没这一列）
+
     ['lessons', 'fee', score],
-    // 发布单：单号 / 来源 / 外部单号（幂等）/ 批次
+
     ['posts', 'code', short],
     ['posts', 'source', short],
     ['posts', 'external_id', nullText],
     ['posts', 'batch_id', short],
-    // 发布单：年级 / 对老师的性别要求（老师端筛单用）
+
     ['posts', 'grade', short],
     ['posts', 'gender', short],
-    // 发布单：结构化要求（学历 / 学校 / 教龄 / 证书 / 性别 / 授课方式 / 预算），JSON 文本
+
     ['posts', 'requirements', mysql ? 'TEXT' : "TEXT NOT NULL DEFAULT ''"],
-    // 发布单：家长原话（给外部 Agent 解析成上面的结构化要求；老师端只展示，不参与筛选）
+
     ['posts', 'raw_text', mysql ? 'TEXT' : "TEXT NOT NULL DEFAULT ''"],
-    // 老师自己的性别（单子指定性别要求时用来判断）
+
     ['teachers', 'gender', short],
-    // 消息中心：谁发的 / Agent / 合同 / 已读
+
     ['messages', 'sender_type', short],
     ['messages', 'agent_id', score],
     ['messages', 'kind', short],
     ['messages', 'contract_url', mysql ? 'VARCHAR(512) NOT NULL DEFAULT \'\'' : "TEXT NOT NULL DEFAULT ''"],
     ['messages', 'is_read', score],
     ['messages', 'external_id', nullText],
-    // 消息中心：这条通知挂在哪条单子下面（0 = 不挂单子，比如助手发的合同 / 系统公告）。
-    // 老师端「消息」页按这一列把同一张单子的通知归成一张卡片。
+
     ['messages', 'post_id', score],
-    // 消息中心：这条通知是哪一条投递产生的（0 = 跟具体投递无关）。
-    // 老师撤回投递时按这一列把这次投递已经写下的通知一并删掉（投递又撤回＝没发生）。
+
     ['messages', 'booking_id', score],
-    // 会话：Agent 会话 + 发送方类型
+
     ['chats', 'agent_id', score],
     ['chats', 'sender_type', short]
   ];
@@ -511,17 +477,13 @@ async function ensureColumns(db) {
     try {
       await db.run('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + type);
     } catch (e) {
-      // 已经有了：忽略
+
     }
   }
 }
 
 async function migrate(db) {
-  /*
-   * 先补老库缺的列，再建表 / 建索引。
-   * 顺序不能反：像 idx_bookings_post 建在 post_id 上，老库里这列是后来才补的，
-   * 先建索引会直接报"no such column"。新库这里 ALTER 会报"no such table"，忽略即可。
-   */
+
   await ensureColumns(db);
   const list = db.driver === 'mysql' ? MYSQL_DDL : SQLITE_DDL;
   for (const sql of list) {
@@ -530,11 +492,6 @@ async function migrate(db) {
   await migrateStatuses(db);
 }
 
-/*
- * 订单状态搬到新流程（试课中 / 主订单进行中 / 已结束）：
- *   老库里的「已确认」「已预约」都是"课定下来了"，直接算主订单进行中（不倒退回去补试课）。
- * 幂等：改过一次之后再跑没有匹配行。
- */
 async function migrateStatuses(db) {
   try {
     await db.run(
@@ -542,7 +499,7 @@ async function migrateStatuses(db) {
       ['主订单进行中', '已确认', '已预约']
     );
   } catch (e) {
-    // 老库还没有 bookings 表（首次建库时不会走到这里）或列不存在：忽略
+
   }
 }
 

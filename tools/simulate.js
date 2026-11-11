@@ -1,14 +1,3 @@
-/*
- * 前端数据层模拟测试（对应项目规则：改完自己跑一遍逻辑，别等用户去点）。
- *
- * 做法：用 Node 把一个假的微信环境装起来（wx.request 走真实 HTTP、wx.storage 放内存、
- * wx.login 给个假 code），然后真的加载 utils/store.js —— 也就是页面用的那一层，
- * 打真实后端跑一遍：两台"设备"共用一份数据、令牌校验、附近筛选、下单接单、聊天、评价。
- *
- * 跑法（先在 server 目录能启动后端就不需要额外操作，本脚本自己会起临时后端）：
- *   node tools/simulate.js
- */
-
 const os = require('node:os');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -21,8 +10,6 @@ const { createServer } = require('../server/server.js');
 const ROOT = path.join(__dirname, '..');
 let passed = 0;
 
-// 前端 utils/config.js 里写死了开发地址（127.0.0.1:3000），这里在沙箱里换成临时后端的真实地址，
-// 免得本机已经把后端跑到 3000 时这个脚本起不来（端口被占）。
 let simApiBase = 'http://127.0.0.1:' + config.port + '/api';
 
 function ok(name, condition, detail) {
@@ -34,8 +21,6 @@ function ok(name, condition, detail) {
   console.error('  ✗ ' + name + (detail === undefined ? '' : ' → ' + JSON.stringify(detail)));
   throw new Error('模拟测试失败：' + name);
 }
-
-// ---------- 假微信环境 ----------
 
 function fakeWx(storage) {
   return {
@@ -49,7 +34,7 @@ function fakeWx(storage) {
       delete storage[key];
     },
     login(options) {
-      // 真机上这里会拿到一次性 code；模拟器给个固定的就行
+
       setTimeout(() => options.success({ code: 'simulated-code' }), 0);
     },
     request(options) {
@@ -80,10 +65,6 @@ function fakeWx(storage) {
   };
 }
 
-/*
- * 一台"设备"：一个独立的 JS 沙箱（自己的 wx + 自己的模块实例 + 自己的内存 storage）。
- * 这样手机 / 模拟器 / 第三台设备就是三份互不相干的运行环境，跟真机一样。
- */
 function createRuntime() {
   const storage = {};
   const cache = {};
@@ -113,7 +94,7 @@ function createRuntime() {
 
   function loadModule(fullPath) {
     const full = path.resolve(fullPath);
-    // 前端接口地址：换成临时后端这次真正监听的端口
+
     if (full.replace(/\\/g, '/').endsWith('utils/config.js')) {
       return {
         IS_DEV: true,
@@ -165,7 +146,6 @@ async function main() {
   }));
   const { server } = await createServer(db);
 
-  // 临时后端起在一个随机空闲端口上（沙箱里把前端 config.js 指过来），不跟本机正在跑的后端抢 3000
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
@@ -209,7 +189,7 @@ async function main() {
     console.log('\n[3] 附近筛选（后端按传上来的定位筛）');
     phone.store.setViewerLocation({ latitude: 39.98, longitude: 116.30 });
     ok('同城能看到这位老师', (await phone.store.teachers('全部', '')).length === 1);
-    phone.store.setViewerLocation({ latitude: 31.23, longitude: 121.47 });   // 上海
+    phone.store.setViewerLocation({ latitude: 31.23, longitude: 121.47 });
     phone.store.setNearbyKm(5);
     ok('上海看北京看不到，并给出隐藏条数', (await phone.store.teachers('全部', '')).length === 0 && phone.store.lastHidden === 1);
     phone.store.setShowAll(true);
@@ -218,7 +198,7 @@ async function main() {
     phone.store.setNearbyKm(0);
 
     console.log('\n[4] 旧的下单接口已下线（改成平台发单、老师投递）');
-    // 「学生直接挑老师下单」这条老链路连同学生写评价一起删掉了
+
     ok('数据层不再暴露 createBooking', phone.store.createBooking === undefined);
     ok('数据层不再暴露评价相关方法', phone.store.submitReview === undefined && phone.store.replyReview === undefined);
 
@@ -255,7 +235,6 @@ async function main() {
       !!((await sim.store.takePost(takeList[0].id, '我是王数学老师，带初二数学 8 年。')) || {}).conflict === false,
       sim.store.lastError);
 
-    // 一条单可以被多位老师投递，家长在「我发布的」里挑一位确认
     const teacher2 = newDevice('李老师');
     const teacher2Id = await teacher2.store.registerTeacher('李英语', 'abc123');
     ok('一条单可以被多位老师投递',
@@ -281,7 +260,6 @@ async function main() {
       await teacher2.store.bookingsForTeacher(teacher2Id));
     ok('"我发布的"里能看到自己发的那条', (await phone.store.myPosts()).length === 1);
 
-    // 被接单之后取消的是「预约」：课取消掉，但单子还是开放的（别的老师还能接）
     ok('老师能取消自己接的课', (await sim.store.cancelBooking(waitingCourse.id)) === true, sim.store.lastError);
     ok('取消预约后单子重新回到可接的单', (await sim.store.postsForTaking()).length === 1);
     ok('取消后那条课的状态是已取消',
@@ -290,24 +268,21 @@ async function main() {
       !!((await sim.store.takePost(takeList[0].id, '简历再来一次')) || {}).conflict === false,
       sim.store.lastError);
 
-    // 学生也可以"换一位老师"：这条接单作废，单子同样重新开放
     const refusedCourse = (await phone.store.bookingsForStudent(studentId))
       .find((b) => b.status === '待确认');
     ok('学生能回绝这次接单（换一位老师）',
       (await phone.store.rejectBooking(refusedCourse.id)) === true, phone.store.lastError);
     ok('回绝后单子又回到可接的单', (await sim.store.postsForTaking()).length === 1);
 
-    // 老师再接一次、学生确认，后面统计就是 2 节已确认的课
     ok('老师再投递一次',
       !!((await sim.store.takePost(takeList[0].id, '第三次投递')) || {}).conflict === false, sim.store.lastError);
     const finalCourse = (await phone.store.bookingsForStudent(studentId)).find((b) => b.status === '待确认');
     ok('学生再确认一次', (await phone.store.acceptBooking(finalCourse.id)) === true, phone.store.lastError);
 
-    // 新流程：确认接单后先试课，试课通过才进主订单；每次上课老师提交、家长确认
     const submitTrial = await sim.store.submitLesson(finalCourse.id, sim.store.lessonTrial(), '试课讲了函数');
     ok('老师提交试课完成', !!submitTrial && submitTrial.kind === '试课', sim.store.lastError);
     const trialLessonId = submitTrial.id;
-    // 试课要付费：家长判定通过时选试课费按半价（120 的一半 = 60）
+
     ok('家长通过试课（试课费按半价）',
       (await phone.store.trialResult(trialLessonId, true, true)) === true, phone.store.lastError);
     const afterTrial = (await phone.store.bookingsForStudent(studentId)).find((b) => b.id === finalCourse.id);
@@ -317,7 +292,6 @@ async function main() {
         afterTrial.lessonStats.confirmedCount === 1 && afterTrial.lessonStats.unpaidAmount === 60,
       afterTrial.lessonStats);
 
-    // 正式课：完成本次 → 有异议 → 改完重提 → 确认本次 → 支付
     const submitFormal = await sim.store.submitLesson(finalCourse.id, sim.store.lessonFormal(), '第二次课');
     ok('主订单里老师提交「完成本次」', !!submitFormal && submitFormal.seq === 1, sim.store.lastError);
     ok('家长有异议：填原因课次退回待确认',
@@ -346,7 +320,7 @@ async function main() {
     ok('未读接口还在（底部导航红点用）', typeof (await sim.store.unreadChatCount()) === 'number');
 
     console.log('\n[7] 批量发单 / 匹配 / 官方助手 / 收款退款');
-    // 批量发单：一次贴三条，其中一条故意缺科目
+
     const batch = await phone.store.batchCreatePosts([
       { subject: '英语', time: '2026-11-05 晚上', price: '130 元/小时', area: '海淀 · 五道口', note: '客户手机 13800000000' },
       { subject: '物理', time: '2026-11-06 晚上', price: '140 元/小时', area: '海淀 · 学院路' },
@@ -358,10 +332,9 @@ async function main() {
     ok('批量发的单带单号，说明里的手机号被抹掉',
       batchPosts.some((p) => !!p.code && p.note.indexOf('13800000000') < 0),
       batchPosts.map((p) => [p.code, p.note]));
-    ok('单号能拿去群里发（形如 2611-012）',
-      batchPosts.every((p) => /^\d{4}-\d{3,}$/.test(p.code || '')), batchPosts.map((p) => p.code));
+    ok('单号能拿去群里发（形如 20261111-1）',
+      batchPosts.every((p) => /^\d{8}-\d+$/.test(p.code || '')), batchPosts.map((p) => p.code));
 
-    // 结构化要求 + 匹配：老师先补全资料（匹配要用可教科目 / 学历 / 教龄 / 证书 / 性别 / 报价）
     await sim.store.saveTeacherResume({
       education: '本科', school: '北京师范大学', years: '8 年', certificate: '教师资格证',
       subject: '数学', price: '150 元/小时', times: '周末全天', intro: '带过三届中考'
@@ -391,7 +364,6 @@ async function main() {
       !!fitItem && fitItem.matchLevel === 'full' && fitItem.matchReasons.length > 0,
       fitItem && [fitItem.matchLevel, fitItem.matchReasons]);
 
-    // 一条硬条件不满足的单（要女老师 + 硕士 + 5 年）
     const badPostId = await phone.store.createPost({
       subject: '数学', grade: '高三', gender: '女', time: '2026-11-21 晚上', price: '180 元/小时',
       requirements: { education: '硕士及以上', minYears: 5, gender: '女' }
@@ -425,10 +397,6 @@ async function main() {
       }),
       byPrice.map((p) => p.price));
 
-    /*
-     * 家长原话 → 结构化要求（模拟发单页那一串：粘原话 → parseRequirement → 直接发布）。
-     * 老师端按固定字段筛：「不限」= 家长没提，不参与筛选。
-     */
     const rawText = '要女老师，硕士以上，最好有经验，能线下，一次 400 元（一次两小时），联系电话 13800000000';
     const parsed = await phone.store.parseRequirement(rawText);
     ok('家长原话解析出固定字段（含糊的"有经验"不猜年限）',
@@ -466,7 +434,6 @@ async function main() {
         !byRawEdu.some((p) => p.id === rawPostId),
       byRawEdu.map((p) => [p.id, p.requirements.education]));
 
-    /* 另一向：老师勾"我自己的情况"（多选），单子提的要求我都得满足 */
     const myBachelor = await sim.store.postsForTaking({ myEducation: ['本科'], onlyMatch: false });
     ok('我勾"本科"：要硕士的单被藏起来',
       !myBachelor.some((p) => p.id === rawPostId) &&
@@ -484,7 +451,6 @@ async function main() {
         myMale.some((p) => p.id === reqPostId),
       myMale.map((p) => [p.id, p.requirements.gender]));
 
-    // 官方助手（外部 Agent 的虚拟账号）：直接用域函数建一个，模拟"外部 Agent 接进来了"
     const agentDomain = require('../server/domain/agent.js');
     const agentInfo = await agentDomain.ensureAgent(db, studentId);
     await agentDomain.issueToken(db, studentId, agentInfo.id, '模拟');
@@ -494,8 +460,8 @@ async function main() {
     ok('老师的消息列表里有官方助手（标官方）',
       agentList.length === 1 && agentList[0].official === true, agentList);
     const agentId = agentList[0].id;
-    ok('老师能点开官方助手会话，消息不受条数限制',
-      (await sim.store.agentChatSession(agentId)).quota.limited === false);
+    ok('老师能点开官方助手会话',
+      typeof (await sim.store.agentChatSession(agentId)).unread === 'number');
     ok('老师能给官方助手发消息',
       (await sim.store.sendAgentChatMessage(agentId, '合同里的时间能改吗？')) === true, sim.store.lastError);
     const box = await sim.store.messages();
@@ -503,7 +469,6 @@ async function main() {
       box.list.some((m) => m.kind === 'contract' && m.contractUrl.indexOf('example.com') >= 0),
       box.list);
 
-    // 收款 / 退款：平台发合同 → 老师已付款 → 平台确认收款 → 没上成全额退
     const payPostId = await phone.store.createPost({
       subject: '化学', time: '2026-11-08 晚上', price: '200 元/次', area: '海淀 · 中关村'
     });
@@ -556,14 +521,13 @@ async function main() {
     ok('退出这台设备不影响老师那台', (await sim.store.bookingsForTeacher(teacherId)).length > 0);
     ok('退出后还能用同样的账号密码登回来', (await phone.store.loginStudent('小明', '123456')) === studentId);
     const backAgain = await phone.store.bookingsForStudent(studentId);
-    // 5 条：2 条进行中（试课中 + 主订单进行中）+ 1 条已取消（老师取消的）+ 2 条已拒绝（学生回绝的 + 没被选上的老师）
+
     ok('登回来数据还在（后端唯一数据源）',
       backAgain.filter((b) => b.status === '试课中').length === 1 &&
         backAgain.filter((b) => b.status === '主订单进行中').length === 1 &&
         backAgain.length === 5,
       backAgain.map((b) => b.status));
 
-    // 接单撞时间：只弹一条提醒，不拦投递（一天可以排好几节课）
     const clashPost = await phone.store.createPost({
       subject: '语文', time: '2026-10-02 下午', price: '99 元/小时', area: '北京海淀',
       lat: 39.98, lng: 116.30, note: '和已有的课撞时间'
@@ -584,7 +548,7 @@ async function main() {
     console.log('\n模拟测试全部通过：' + passed + ' 项\n');
     process.exitCode = 0;
   } finally {
-    // 断开 keep-alive 连接，别让 server.close 一直等（不然脚本跑完不退出）
+
     if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
     await db.close();

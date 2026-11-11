@@ -8,7 +8,6 @@
 
   <view class="card intent-tip" wx:if="{{intentTip}}">{{intentTip}}</view>
 
-  <!-- 身份切换：同一时间只显示选中的这一种身份 -->
   <view class="row">
     <button class="{{role === 'student' ? 'btn' : 'btn-ghost'}} grow"
             data-role="student" bindtap="onPickRole">🧑‍🎓 学生</button>
@@ -18,7 +17,6 @@
   </view>
   <view class="gap"></view>
 
-  <!-- 学生登录 / 注册 -->
   <view class="card" wx:if="{{role === 'student'}}">
     <view class="field">
       <view class="field-label">姓名</view>
@@ -41,7 +39,6 @@
     <view class="muted">没有账号就点【注册新学生】。</view>
   </view>
 
-  <!-- 老师登录 / 注册：只要姓名 + 密码，科目价格位置这些登录后在【我的】页填 -->
   <view class="card" wx:if="{{role === 'teacher'}}">
     <view class="field">
       <view class="field-label">姓名</view>

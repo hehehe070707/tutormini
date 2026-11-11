@@ -1,9 +1,3 @@
-/*
- * 我的简历（老师端，从「我的」页进）。
- * 字段：学历 / 学校 / 教龄 / 证书 / 可教科目 / 价格 / 可教时段 / 自我介绍。
- * 保存后：老师列表卡片、老师简历页（teacherDetail）、投递简历弹窗都读这份。
- */
-
 const store = require('../../utils/store.js');
 const session = require('../../utils/session.js');
 const util = require('../../utils/util.js');
@@ -41,7 +35,6 @@ Page({
     this.onHide();
   },
 
-  // 简历以后端为唯一数据源：每次显示都拉一份最新的
   async refresh() {
     if (!session.isTeacher()) {
       this.setData({ hint: '这个页面只有老师账号能用。' });

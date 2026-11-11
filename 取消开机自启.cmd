@@ -1,5 +1,4 @@
 @echo off
-rem Removes the logon auto-start entry named TutorMiniBackend.cmd
 chcp 65001 >nul
 setlocal
 

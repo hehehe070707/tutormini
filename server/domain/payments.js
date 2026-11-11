@@ -1,14 +1,3 @@
-/*
- * 收款 / 退款域（平台侧和老师之间的钱）。
- *
- * 实际流程（群里跑的）：平台确认接单之后发合同 + 收款码给老师 → 老师付款 →
- * 平台核对到账 → 开始试课；试课没上成 → 平台确认退款（全额）；上过一次课 →
- * 按合同退款（扣掉已上的次数，具体金额由平台填，这里只记账不判断比例）。
- *
- * 钱走的是微信收款码，平台外完成，小程序这边只记「谁该收多少、收到没有、退了多少」。
- * payments 表：一条 charge（收款）+ 若干条 refund（退款）。
- */
-
 const util = require('../lib/util.js');
 const { ApiError } = require('../lib/errors.js');
 const notify = require('./notify.js');
@@ -37,22 +26,14 @@ async function listForBooking(db, bookingId) {
   return rows.map(readPayment);
 }
 
-/*
- * 一次查好一批订单的收款记录，贴到 booking.payments / booking.payStats 上。
- * payStats 给页面直接用：
- *   charge        当前那条收款（没有就是 null）
- *   received      是否已确认收款（老师付款到位）
- *   refunded      退款总额
- *   netAmount     算下来平台这边实际留下多少（收款 - 退款）
- */
 async function attach(db, bookings) {
   for (const booking of bookings) {
     const list = await listForBooking(db, booking.id);
     const charge = list.filter((item) => !item.isRefund).slice(-1)[0] || null;
     const refunded = list.filter((item) => item.isRefund)
       .reduce((sum, item) => sum + item.amount, 0);
-    booking.payments = list;                              // eslint-disable-line no-param-reassign
-    booking.payStats = {                                  // eslint-disable-line no-param-reassign
+    booking.payments = list;
+    booking.payStats = {
       charge,
       received: !!charge && charge.status === util.PAY_RECEIVED,
       refunded,
@@ -80,10 +61,6 @@ function assertTeacherOwns(booking, accountId) {
   }
 }
 
-/*
- * 平台发合同 + 收款码：写一条（或更新）收款记录。
- * 订单还没最后结束、而且还没确认收到钱的时候才能改（收到钱之后再改金额没意义）。
- */
 async function setContract(db, bookingId, role, accountId, options) {
   if (role !== util.ROLE_STUDENT) throw new ApiError('只有平台端能设置合同和收款。', 403);
   const opts = options || {};
@@ -129,7 +106,6 @@ async function setContract(db, bookingId, role, accountId, options) {
   return { id: Number(result.lastId), amount, contractUrl };
 }
 
-// 老师点「我已付款」：只是告诉平台"我付了"，真正算数的是平台确认
 async function markPaid(db, paymentId, role, accountId) {
   const payment = await db.get('SELECT * FROM payments WHERE id = ?', [Number(paymentId)]);
   if (!payment) throw new ApiError('找不到这条收款记录。');
@@ -153,7 +129,6 @@ async function markPaid(db, paymentId, role, accountId) {
   return true;
 }
 
-// 平台点「确认收款」：这一单才算真的收到钱，之后老师才能开始试课
 async function confirmReceipt(db, paymentId, role, accountId) {
   const payment = await db.get('SELECT * FROM payments WHERE id = ?', [Number(paymentId)]);
   if (!payment) throw new ApiError('找不到这条收款记录。');
@@ -176,10 +151,6 @@ async function confirmReceipt(db, paymentId, role, accountId) {
   return true;
 }
 
-/*
- * 平台确认退款：没上成退全额，上过一次按合同扣（金额由平台填）。
- * 一条退款记录单独存下来，收款那条标成「已退款」，两边都看得见。
- */
 async function refund(db, paymentId, role, accountId, options) {
   const payment = await db.get('SELECT * FROM payments WHERE id = ?', [Number(paymentId)]);
   if (!payment) throw new ApiError('找不到这条收款记录。');
@@ -218,13 +189,12 @@ async function refund(db, paymentId, role, accountId, options) {
   return { id: Number(result.lastId), amount };
 }
 
-// 老师提交试课前查一下：平台发了收款码但还没确认收到钱，就先别开课
 async function assertTrialUnlocked(db, booking) {
   const charge = await db.get(
     'SELECT * FROM payments WHERE booking_id = ? AND kind = ? ORDER BY id DESC LIMIT 1',
     [Number(booking.id), util.PAY_CHARGE]
   );
-  if (!charge) return true;                    // 没走过收款流程（老数据 / 没发合同）不拦
+  if (!charge) return true;
   if (charge.status !== util.PAY_RECEIVED) {
     throw new ApiError('平台还没确认收到付款，等确认收款后再提交试课。');
   }

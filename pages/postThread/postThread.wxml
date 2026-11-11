@@ -1,5 +1,5 @@
 <view class="page">
-  <!-- 这张卡片是哪条单子 + 走到哪一步了 -->
+
   <view class="card box-head" wx:if="{{post}}">
     <view class="m-name">{{post.code}} <text class="{{post.statusClass}}">{{post.statusText}}</text></view>
     <view class="muted">{{post.subject}} · {{post.timeText}}</view>

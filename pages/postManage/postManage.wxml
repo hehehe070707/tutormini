@@ -4,7 +4,7 @@
   </view>
 
   <block wx:elif="{{loaded && post}}">
-    <!-- ① 这条单的全部属性 -->
+
     <view class="card pm-head">
       <view class="pm-title">
         <text class="pm-code">{{post.code}}</text>
@@ -30,7 +30,6 @@
       </view>
     </view>
 
-    <!-- ② 收到的投递：只看（看简历 / 看老师资料）；红点＝还有没处理的投递 -->
     <view class="page-title section">收到的投递<text class="red-dot" wx:if="{{pendingCount > 0}}"></text></view>
     <view class="muted pm-hint" wx:if="{{invites.length > 0}}">点老师名字看资料，简历点【看简历】。定人 / 回绝都在【工作台】的待办里点。</view>
     <view class="list" wx:if="{{invites.length > 0}}">
@@ -46,7 +45,6 @@
     </view>
     <view class="empty" wx:else>还没有老师投递。</view>
 
-    <!-- ③ 合同收款：定下老师之后这一块才出现，这里只看（发合同 / 确认收款在待办里） -->
     <block wx:if="{{bookings.length > 0}}">
       <view class="page-title section">合同与收款</view>
       <view class="muted pm-hint">发合同 / 收款码、确认收款都在【工作台】的待办里点。</view>
@@ -64,7 +62,6 @@
       </view>
     </block>
 
-    <!-- ④ 修正：中介手动兜底（家长不在小程序里，状态以中介问到的为准） -->
     <view class="page-title section">修正</view>
     <view class="card fix-card">
       <view class="fix-label">单子状态</view>

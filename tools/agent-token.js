@@ -1,17 +1,3 @@
-/*
- * 给外部 Agent 发一枚访问令牌（只有这一个入口，小程序里不暴露）。
- *
- * 用法（在项目根目录执行）：
- *   node tools/agent-token.js 1             # 1 = 学生（平台）账号 id
- *   node tools/agent-token.js 张三           # 也可以直接写账号姓名
- *   node tools/agent-token.js 1 我的助手     # 第二个参数是这枚令牌的备注
- *   node tools/agent-token.js --list        # 看已有的令牌（只显示摘要前 8 位，看不回原文）
- *   node tools/agent-token.js --revoke 3    # 吊销 3 号令牌
- *
- * 令牌原文只在创建时打印一次；库里存的是 SHA-256 摘要。外部 Agent 调接口时带：
- *   X-Agent-Token: <令牌原文>
- */
-
 const config = require('../server/config.js');
 const { openDatabase } = require('../server/db/index.js');
 const agent = require('../server/domain/agent.js');

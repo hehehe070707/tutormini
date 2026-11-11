@@ -9,7 +9,7 @@
   </view>
 
   <block wx:else>
-  <!-- 1）官方助手：置顶，标「官方」 -->
+
   <block wx:if="{{agents.length > 0}}">
     <view class="page-title section">官方助手</view>
     <view class="list">
@@ -29,7 +29,6 @@
     </view>
   </block>
 
-  <!-- 2）我的单子：一条单子一张卡片 —— 状态在右上角，这条单子的消息直接铺在卡片里 -->
   <block wx:if="{{boxes.length > 0 || hiddenCount > 0}}">
     <view class="section-head">
       <view class="page-title">我的单子</view>
@@ -53,7 +52,6 @@
         </view>
       </view>
 
-      <!-- 这条单子的全部属性：老师不进二级页也要能看全 -->
       <view class="box-attrs">
         <view class="muted">上课时间：{{item.timeText}}</view>
         <view class="muted">价格：{{item.price}}</view>
@@ -64,7 +62,6 @@
         <view class="muted" wx:if="{{item.inviteText}}">{{item.inviteText}}</view>
       </view>
 
-      <!-- 这条单子的全部消息：状态变了不会多一张卡片，只会让这张卡片变长 -->
       <view class="box-msgs">
         <view class="box-msg {{msg.isRead ? '' : 'unread'}}" wx:for="{{item.rows}}" wx:for-item="msg" wx:key="id"
               data-url="{{msg.contractUrl}}" bindtap="onTapMessage">
@@ -86,7 +83,6 @@
     </view>
   </block>
 
-  <!-- 3）通知：没挂单子的那些（合同 / 公告；挂了单子的都在上面的单子卡片里） -->
   <block wx:if="{{notices.length > 0}}">
     <view class="page-title section">通知</view>
     <view class="list">

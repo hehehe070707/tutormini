@@ -1,19 +1,9 @@
-﻿<#
- * 穿透后端（cloudflared 快速隧道）
- *
- * 双击项目根目录的「穿透后端.cmd」运行：把本机 http://127.0.0.1:3000 暴露成一个公网
- * https 地址。手机不在同一个 WiFi（甚至用 4G）也能连，用来绕开校园网的 AP 隔离。
- *
- * 注意：本文件必须保持「UTF-8 带 BOM」，否则 Windows PowerShell 5.1 会按 ANSI 读，中文乱码。
- #>
-
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 $port = 3000
 $root = Split-Path -Parent $PSScriptRoot
 
-# cloudflared 可能在哪：PATH / 项目根目录 / winget 装的默认位置
 function Find-Cloudflared {
   $candidates = @()
   $cmd = Get-Command cloudflared -ErrorAction SilentlyContinue
@@ -39,7 +29,6 @@ if ($exe -eq '') {
   exit 1
 }
 
-# 顺手确认后端在本机跑着，否则穿透出去也是个空地址
 $backendUp = $false
 try {
   $r = Invoke-WebRequest -Uri ('http://127.0.0.1:' + $port + '/api/health') -TimeoutSec 5 -UseBasicParsing
@@ -58,7 +47,6 @@ Write-Host '开发阶段「详情 → 本地设置 → 不校验合法域名」�
 Write-Host 'trycloudflare 的域名不是你的，加不进小程序后台的 request 合法域名。' -ForegroundColor Yellow
 Write-Host ''
 
-# 把隧道地址写回 utils/config.js 的 TUNNEL_BASE 那一行（只动这一行，格式不对就跳过，不硬改）
 function Set-TunnelBase($publicUrl) {
   $cfgPath = Join-Path $root 'utils\config.js'
   $apiBase = $publicUrl.TrimEnd('/') + '/api'
@@ -99,7 +87,6 @@ function Set-TunnelBase($publicUrl) {
   Write-Host ''
 }
 
-# cloudflared 的输出同时显示在窗口里，并顺手从里面抓出隧道地址
 $tunnelReady = $false
 & $exe tunnel --url ('http://127.0.0.1:' + $port) --no-autoupdate 2>&1 | ForEach-Object {
   $text = [string]$_
